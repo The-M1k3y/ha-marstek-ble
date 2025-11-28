@@ -13,12 +13,9 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     CMD_AC_POWER,
-    CMD_ADAPTIVE_MODE,
-    CMD_AUTO_MODE,
     CMD_POWER_MODE,
     CMD_REBOOT,
     CMD_TOTAL_POWER,
-    CMD_WORK_MODE,
     DOMAIN,
 )
 from .coordinator import MarstekDataUpdateCoordinator
@@ -42,46 +39,6 @@ async def async_setup_entry(
             "Reboot",
             CMD_REBOOT,
             b"",
-        ),
-        MarstekButton(
-            coordinator,
-            entry,
-            "enable_ai_mode",
-            "Enable AI Optimization (Experimental)",
-            CMD_ADAPTIVE_MODE,
-            b"\x01",
-        ),
-        MarstekButton(
-            coordinator,
-            entry,
-            "self_consumption_on",
-            "Self-Consumption Mode On",
-            CMD_AUTO_MODE,
-            b"\x01",
-        ),
-        MarstekButton(
-            coordinator,
-            entry,
-            "self_consumption_off",
-            "Self-Consumption Mode Off",
-            CMD_AUTO_MODE,
-            b"\x00",
-        ),
-        MarstekButton(
-            coordinator,
-            entry,
-            "manual_mode_on",
-            "Manual Mode On",
-            CMD_WORK_MODE,
-            b"\x01",
-        ),
-        MarstekButton(
-            coordinator,
-            entry,
-            "manual_mode_off",
-            "Manual Mode Off",
-            CMD_WORK_MODE,
-            b"\x00",
         ),
         MarstekButton(
             coordinator,

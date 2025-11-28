@@ -13,7 +13,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     CMD_AC_INPUT,
-    CMD_ADAPTIVE_MODE,
     CMD_BUZZER,
     CMD_EPS_MODE,
     CMD_GENERATOR,
@@ -50,14 +49,6 @@ async def async_setup_entry(
             "EPS Mode",
             CMD_EPS_MODE,
             value_fn=None,
-        ),
-        MarstekSwitch(
-            coordinator,
-            entry,
-            "adaptive_mode",
-            "Adaptive Mode",
-            CMD_ADAPTIVE_MODE,
-            value_fn=lambda data: data.adaptive_mode_enabled,
         ),
         MarstekSwitch(
             coordinator,

@@ -12,7 +12,14 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CMD_CHARGE_MODE, CMD_CT_POLLING_RATE_WRITE, DOMAIN
+from .const import (
+    CMD_AI_MODE,
+    CMD_AUTO_MODE,
+    CMD_CHARGE_MODE,
+    CMD_CT_POLLING_RATE_WRITE,
+    CMD_WORK_MODE,
+    DOMAIN,
+)
 from .coordinator import MarstekDataUpdateCoordinator
 from .marstek_device import MarstekData
 
@@ -30,6 +37,10 @@ async def async_setup_entry(
     coordinator: MarstekDataUpdateCoordinator = entry.runtime_data
 
     entities = [
+        MarstekOperatingModeSelect(
+            coordinator,
+            entry,
+        ),
         MarstekSelect(
             coordinator,
             entry,
@@ -59,6 +70,79 @@ async def async_setup_entry(
     ]
 
     async_add_entities(entities)
+
+
+class MarstekOperatingModeSelect(
+    CoordinatorEntity[MarstekDataUpdateCoordinator],
+    SelectEntity,
+):
+    """Representation of Marstek operating mode selector.
+
+    This select entity allows switching between the three main operating modes:
+    - Self-Consumption: Optimize for self-consumption of solar power
+    - AI Optimization: Let the device optimize power flow automatically
+    - Manual: User controls power settings manually
+    """
+
+    def __init__(
+        self,
+        coordinator: MarstekDataUpdateCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the operating mode select."""
+        super().__init__(coordinator)
+        self._attr_name = "Operating Mode"
+        self._attr_has_entity_name = True
+        self._attr_entity_category = EntityCategory.CONFIG
+        self._attr_unique_id = f"{entry.entry_id}_operating_mode"
+        self._attr_options = ["Self-Consumption", "AI Optimization", "Manual"]
+        self._attr_current_option: str | None = None
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the selected option."""
+        return self._attr_current_option
+
+    async def async_select_option(self, option: str) -> None:
+        """Change the selected operating mode."""
+        _LOGGER.debug("Selecting operating mode: %s", option)
+
+        # Map option to command and payload
+        mode_commands = {
+            "Self-Consumption": (CMD_AUTO_MODE, b"\x01"),
+            "AI Optimization": (CMD_AI_MODE, b"\x01"),
+            "Manual": (CMD_WORK_MODE, b"\x01"),
+        }
+
+        if option not in mode_commands:
+            _LOGGER.error("Invalid operating mode: %s", option)
+            return
+
+        cmd, payload = mode_commands[option]
+        _LOGGER.debug(
+            "Sending command 0x%02X with payload %s for mode %s",
+            cmd,
+            payload.hex(),
+            option,
+        )
+
+        if await self.coordinator.device.send_command(cmd, payload):
+            self._attr_current_option = option
+            self.async_write_ha_state()
+            _LOGGER.info("Successfully switched to %s mode", option)
+        else:
+            _LOGGER.error("Failed to switch to %s mode", option)
+
+    @property
+    def device_info(self):
+        """Return device information."""
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.ble_device.address)},
+            "connections": {(CONNECTION_BLUETOOTH, self.coordinator.ble_device.address)},
+            "name": self.coordinator.device_name,
+            "manufacturer": "Marstek",
+            "model": "Venus E",
+        }
 
 
 class MarstekSelect(
