@@ -13,7 +13,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    CMD_AI_MODE,
     CMD_AUTO_MODE,
     CMD_CHARGE_MODE,
     CMD_CT_POLLING_RATE_WRITE,
@@ -78,10 +77,11 @@ class MarstekOperatingModeSelect(
 ):
     """Representation of Marstek operating mode selector.
 
-    This select entity allows switching between the three main operating modes:
+    This select entity allows switching between the two main operating modes:
     - Self-Consumption: Optimize for self-consumption of solar power
-    - AI Optimization: Let the device optimize power flow automatically
     - Manual: User controls power settings manually
+
+    Note: AI Optimization mode is not supported over BLE.
     """
 
     def __init__(
@@ -95,7 +95,7 @@ class MarstekOperatingModeSelect(
         self._attr_has_entity_name = True
         self._attr_entity_category = EntityCategory.CONFIG
         self._attr_unique_id = f"{entry.entry_id}_operating_mode"
-        self._attr_options = ["Self-Consumption", "AI Optimization", "Manual"]
+        self._attr_options = ["Self-Consumption", "Manual"]
         self._attr_current_option: str | None = None
 
     @property
@@ -110,7 +110,6 @@ class MarstekOperatingModeSelect(
         # Map option to command and payload
         mode_commands = {
             "Self-Consumption": (CMD_AUTO_MODE, b"\x01"),
-            "AI Optimization": (CMD_AI_MODE, b"\x01"),
             "Manual": (CMD_WORK_MODE, b"\x01"),
         }
 
