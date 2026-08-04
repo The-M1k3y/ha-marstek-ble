@@ -52,6 +52,8 @@ Do not invent `verified` events. A human review must be represented by a real `h
 - `index.md` and `log.md` are reserved filenames; do not use them for ordinary concepts.
 - The bundle-root `index.md` carries `okf_version: "0.2"` and provides progressive disclosure.
 - Prefer structured Markdown: headings, tables, lists, and fenced examples.
+- Keep Markdown table columns padded and delimiter rows aligned so tables remain readable in a monospace editor; realign the complete table after changing any cell.
+- Order protocol field tables by byte offset, including unknown and unused ranges in their actual positions rather than grouping fields logically.
 - Use normal Markdown links between concepts; keep links relative to `docs/OKF/` where practical.
 - Each `sources` entry must include `resource`.
 - Preserve unknown frontmatter fields when editing a concept.
