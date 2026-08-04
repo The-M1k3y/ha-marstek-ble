@@ -17,8 +17,9 @@ This bundle describes the repository at source revision `59ea1c3f0e6f239cecbae7f
 
 # Venus communication protocol
 
+* [Venus BLE protocol](protocol/venus/) - Progressive entry point for transport, framing, command inventory, and individual message schemas.
 * [Venus BLE transport and framing](venus-ble-protocol.md) - GATT service, frame structure, checksum, request/response correlation, and connection lifecycle.
-* [Venus command and payload reference](venus-command-reference.md) - Commands, control payloads, and response fields implemented by the repository.
+* [Venus command summary](venus-command-reference.md) - Compact list of commands sent or parsed by the integration.
 
 # Maintenance
 
