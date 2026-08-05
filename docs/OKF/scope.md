@@ -1,57 +1,97 @@
 ---
 type: Knowledge Scope
 title: Marstek BLE knowledge scope
-description: Defines the product, source, and trust boundaries for this knowledge bundle.
-tags: [scope, provenance, marstek, venus]
+description: Defines the product, source, privacy, and trust boundaries for this knowledge bundle.
+tags: [scope, provenance, privacy, marstek, venus, jupiter]
 status: draft
-source_revision: "59ea1c3f0e6f239cecbae7f9024e0dc48c328d89"
-generated: { by: openai/gpt-5.6-thinking, at: 2026-08-04T09:37:02Z }
+source_revision: "17d3211e12989eb428681f5959707e9403e61bf6"
+generated: { by: openai/gpt-5.6-thinking, at: 2026-08-05T14:19:00Z }
 sources:
   - id: okf-spec
     resource: https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md
     title: Open Knowledge Format specification v0.2
   - id: repository
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/tree/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/tree/17d3211e12989eb428681f5959707e9403e61bf6
     title: ha-marstek-ble repository at the documented revision
-  - id: readme
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89/README.md
-    title: Repository README
-  - id: manifest
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89/custom_components/marstek_ble/manifest.json
-    title: Home Assistant integration manifest
+  - id: existing-device
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/17d3211e12989eb428681f5959707e9403e61bf6/custom_components/marstek_ble/marstek_device.py
+    title: Existing Venus-specific protocol implementation
+  - id: declarative-schema
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/17d3211e12989eb428681f5959707e9403e61bf6/custom_components/marstek_ble/schema.py
+    title: Branch-only declarative parsing scaffolding
+  - id: product-models
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/tree/17d3211e12989eb428681f5959707e9403e61bf6/custom_components/marstek_ble/products
+    title: Branch-only Venus and Jupiter product models
+  - id: jupiter-map
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/2cd631c99cf445d0526f450e1f7d5e55f5958178/docs/sources/jupiter-c-plus-ble-field-map.md
+    title: Sanitized Jupiter-C Plus BLE field map
 ---
 
 # Included knowledge
 
-This bundle records knowledge directly supported by the `ha-marstek-ble` repository at the `source_revision` named in the frontmatter.[^repository]
+This bundle records knowledge directly supported by committed repository sources
+at the `source_revision` named in the frontmatter.[^repository]
 
 Included subjects are:
 
-- the Home Assistant custom integration's purpose, structure, setup flow, polling model, entities, diagnostics, and BLE lifecycle;
-- device discovery and behavior implemented for Marstek Venus E units advertised as `MST_ACCP_*` or `MST_VNSE3_*`; and
-- BLE framing, commands, control payloads, and response layouts implemented in the repository.
+- the existing Home Assistant integration's setup, polling, entities,
+  diagnostics, BLE lifecycle, and implemented Venus protocol;
+- branch-only declarative packet parsing, cumulative nested dataclasses, Home
+  Assistant entity descriptions, and product profiles;
+- the sanitized Jupiter-C Plus command and field structure in the committed
+  field map; and
+- fixed-limit repeated records, including Jupiter PV inputs, event history, and
+  base/expansion battery summaries.
 
-The repository describes Venus E hardware v2 as tested and hardware v3 as untested.[^readme] The integration manifest registers both advertising-name patterns and identifies the integration as a local-polling device integration.[^manifest]
+The declarative model is scaffolding only. It does not mean Jupiter is currently
+discovered, polled, parsed, or exposed by the running integration.
 
-# Explicit exclusions
+# Privacy and sanitization boundary
 
-The following information MUST NOT be added to or inferred into this bundle unless it first becomes an explicit, reviewable repository source:
+Repository protocol knowledge may include:
 
-- any reverse engineering, packet captures, field mappings, hypotheses, or conclusions concerning Marstek Jupiter-C units;
-- information remembered from conversations, private reports, diagnostics, or experiments that is not committed to this repository;
-- guessed equivalence between Venus fields and fields used by another Marstek product; and
-- generalized protocol claims that exceed what the current implementation demonstrates.
+- command numbers and payload lengths;
+- payload-relative offsets and lengths;
+- signedness, byte order, and binary types;
+- semantic field names and canonical units;
+- confidence labels; and
+- repeated-record counts, strides, and topology.
 
-A product name may be mentioned only to define an exclusion or when the repository itself introduces support for that product. This scope rule prevents accidental contamination of Venus knowledge with unrelated reverse-engineering work.
+The following private diagnostic material is explicitly excluded:
+
+- complete frames or payload hex;
+- captured timestamps and event records;
+- device, cloud, account, or network identifiers;
+- MAC addresses and Wi-Fi names;
+- observed telemetry values or capture-specific counter values; and
+- source diagnostic files or reconstructions of their contents.
+
+The Jupiter map intentionally retains protocol structure without capture data.
+
+# Product separation
+
+A shared command byte does not establish a shared payload schema. Venus and
+Jupiter offsets, scales, status fields, packet lengths, response availability,
+and entities remain product-specific unless a committed source explicitly
+supports a common abstraction.
+
+The generic schema and entity planners are shared mechanisms. Product modules
+provide actual packet definitions, capabilities, repeated limits, and Home
+Assistant metadata.
 
 # Interpretation rules
 
-1. **Source code takes precedence.** When README prose and executable code disagree, document the behavior of the source revision and note the discrepancy.
-2. **Implemented does not mean vendor-confirmed.** Field names, units, offsets, and command meanings in this bundle describe the repository's current interpretation.
-3. **Overlapping or tentative interpretations stay qualified.** Do not silently upgrade comments such as “tentative,” payload-length branches, or untested device variants into confirmed protocol facts.
-4. **No fabricated verification.** These concepts are machine-generated and therefore have `status: draft` and no `verified` event. Human review may add a valid `human:<id>` verification event.
-5. **Revision awareness.** Before relying on a concept for code changes, compare `source_revision` with the branch being modified and inspect any intervening changes.
+1. **Executable source takes precedence.** When documentation and code disagree,
+   inspect the current branch and update the knowledge.
+2. **Sanitized sources constrain product facts.** Do not add capture-derived
+   values or interpretations absent from committed sanitized sources.
+3. **Implemented does not mean vendor-confirmed.** Field meanings describe the
+   repository's current interpretation.
+4. **Confidence remains explicit.** Tentative and strong mappings must not be
+   silently upgraded to confirmed.
+5. **No fabricated verification.** Machine-generated concepts remain `draft`
+   until a human actually reviews them.
+6. **Revision awareness.** Compare `source_revision` with the branch before
+   relying on a concept for code changes.
 
 [^repository]: Repository tree at the documented revision.
-[^readme]: Repository README.
-[^manifest]: Home Assistant integration manifest.
