@@ -111,3 +111,23 @@ The branch-only declarative model under `custom_components/marstek_ble/schema.py
 `entity.py`, and `products/` is not connected to the existing integration yet.
 Do not silently wire it into existing source files unless the requested task
 explicitly includes that integration step.
+
+## Unit-test discipline
+
+- Run the complete isolated unit-test suite before every commit. Run both the
+  passing baseline (`pytest -m "not known_issue"`) and the full coverage run
+  (`pytest --cov --cov-report=term-missing`). Compare the full result with the
+  known-failure baseline and do not introduce unaccounted failures.
+- Every newly added function must be accompanied by a dedicated set of tests
+  covering its normal behavior, boundary conditions, and relevant failure
+  paths.
+- Never change production code and tests in the same commit. Use distinct
+  test-only and code-only commits, and do not weaken or rewrite tests merely to
+  make a production change pass.
+- Unit tests must run in an isolated environment without a real Home Assistant
+  installation or instance, network access, Bluetooth hardware, an ESPHome
+  proxy, or a physical Marstek device. Replace external systems with deterministic
+  stubs, fakes, or mocks.
+- Keep defect tests as ordinary failures marked `known_issue`; do not skip,
+  remove, or convert them to expected failures without explicit approval from
+  the repository owner.
