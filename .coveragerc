@@ -2,6 +2,7 @@
 branch = True
 source =
     custom_components/marstek_ble
+    standalone_test
 omit =
     custom_components/marstek_ble/entity.py
     custom_components/marstek_ble/schema.py
