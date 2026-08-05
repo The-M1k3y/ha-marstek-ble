@@ -9,14 +9,19 @@ from __future__ import annotations
 
 import struct
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import MISSING, Field, dataclass, field, fields, is_dataclass
 from types import MappingProxyType
 from typing import Any, TypeVar
 
 Converter = Callable[[Any], Any]
+PathElement = str | int
+DataPath = tuple[PathElement, ...]
 
 _FIELD_SOURCES_METADATA_KEY = "marstek_ble_field_sources"
+_FIELD_ENTITIES_METADATA_KEY = "marstek_ble_field_entities"
+_INDEXED_ENTITIES_METADATA_KEY = "marstek_ble_indexed_entities"
 _SECTION_SOURCES_METADATA_KEY = "marstek_ble_section_sources"
+_REPEATED_SECTION_METADATA_KEY = "marstek_ble_repeated_section"
 
 
 def identity(value: Any) -> Any:
@@ -123,10 +128,18 @@ class FieldSource:
 
         return self.offset + self.size
 
-    def applies_to(self, payload_length: int) -> bool:
+    def applies_to(
+        self,
+        payload_length: int,
+        *,
+        base_offset: int = 0,
+    ) -> bool:
         """Return whether this source applies to a payload of the given length."""
 
-        required_length = max(self.end_offset, self.minimum_length or 0)
+        required_length = max(
+            base_offset + self.end_offset,
+            self.minimum_length or 0,
+        )
         if payload_length < required_length:
             return False
         return self.maximum_length is None or payload_length <= self.maximum_length
@@ -153,7 +166,7 @@ class FieldSource:
 
 @dataclass(frozen=True, slots=True)
 class SectionSource:
-    """Locate a nested dataclass section within a packet payload."""
+    """Locate one nested dataclass section within a packet payload."""
 
     offset: int = 0
 
@@ -163,14 +176,60 @@ class SectionSource:
 
 
 @dataclass(frozen=True, slots=True)
+class RepeatedSectionSource:
+    """Locate a fixed-size sequence of nested records in one packet."""
+
+    offset: int
+    stride: int
+
+    def __post_init__(self) -> None:
+        if self.offset < 0:
+            raise ValueError("Repeated section offset cannot be negative")
+        if self.stride <= 0:
+            raise ValueError("Repeated section stride must be positive")
+
+
+@dataclass(frozen=True, slots=True)
+class RepeatedSectionSpec:
+    """Describe a fixed-limit list of nested dataclass records."""
+
+    item_type: Callable[[], Any] = field(repr=False, compare=False)
+    count: int
+    sources: Mapping[PacketSchema, RepeatedSectionSource] = field(
+        repr=False,
+        compare=False,
+    )
+    active_count_attribute: str | None = None
+    child_device: Any = field(default=None, repr=False, compare=False)
+    item_name_factory: Any = field(default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        if self.count <= 0:
+            raise ValueError("Repeated section count must be positive")
+        if not self.sources:
+            raise ValueError("Repeated section requires at least one packet source")
+        object.__setattr__(
+            self,
+            "sources",
+            MappingProxyType(dict(self.sources)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class ParsedField:
     """One pending field update produced by :func:`iter_parsed_fields`."""
 
-    path: str
+    path: DataPath
     value: Any
     raw_value: Any = field(repr=False)
     _target: Any = field(repr=False, compare=False)
     _attribute: str = field(repr=False, compare=False)
+
+    @property
+    def path_string(self) -> str:
+        """Return the dotted representation used for update metadata."""
+
+        return ".".join(str(part) for part in self.path)
 
     def apply(self) -> None:
         """Apply this update to its target dataclass instance."""
@@ -178,29 +237,73 @@ class ParsedField:
         setattr(self._target, self._attribute, self.value)
 
 
+def _field_metadata(
+    *,
+    sources: Mapping[PacketSchema, FieldSource] | None = None,
+    entities: Sequence[Any] = (),
+    indexed_entities: Sequence[Any] = (),
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
+    if sources:
+        metadata[_FIELD_SOURCES_METADATA_KEY] = MappingProxyType(dict(sources))
+    if entities:
+        metadata[_FIELD_ENTITIES_METADATA_KEY] = tuple(entities)
+    if indexed_entities:
+        metadata[_INDEXED_ENTITIES_METADATA_KEY] = tuple(indexed_entities)
+    return metadata
+
+
 def source_field(
     *,
     sources: Mapping[PacketSchema, FieldSource],
+    entities: Sequence[Any] = (),
+    indexed_entities: Sequence[Any] = (),
     default: Any = None,
-    default_factory: Callable[[], Any] | None = None,
+    default_factory: Callable[[], Any] | Any = MISSING,
     repr: bool = True,
 ) -> Any:
-    """Create a dataclass field whose packet representations are declared inline."""
+    """Create a dataclass field with packet sources and optional entity metadata."""
 
     if not sources:
         raise ValueError("A source field requires at least one packet source")
 
-    metadata = {
-        _FIELD_SOURCES_METADATA_KEY: MappingProxyType(dict(sources)),
-    }
-
-    if default_factory is not None:
+    metadata = _field_metadata(
+        sources=sources,
+        entities=entities,
+        indexed_entities=indexed_entities,
+    )
+    if default_factory is not MISSING:
         return field(
             default_factory=default_factory,
             metadata=metadata,
             repr=repr,
         )
+    return field(default=default, metadata=metadata, repr=repr)
 
+
+def value_field(
+    *,
+    entities: Sequence[Any],
+    indexed_entities: Sequence[Any] = (),
+    default: Any = None,
+    default_factory: Callable[[], Any] | Any = MISSING,
+    repr: bool = True,
+) -> Any:
+    """Create an entity-backed value with no fixed binary representation yet."""
+
+    if not entities and not indexed_entities:
+        raise ValueError("A value field requires entity metadata")
+
+    metadata = _field_metadata(
+        entities=entities,
+        indexed_entities=indexed_entities,
+    )
+    if default_factory is not MISSING:
+        return field(
+            default_factory=default_factory,
+            metadata=metadata,
+            repr=repr,
+        )
     return field(default=default, metadata=metadata, repr=repr)
 
 
@@ -219,6 +322,67 @@ def section_field(
         metadata[_SECTION_SOURCES_METADATA_KEY] = MappingProxyType(dict(sources))
 
     return field(default_factory=section_type, metadata=metadata, repr=repr)
+
+
+def repeated_section_field(
+    section_type: Callable[[], Any],
+    *,
+    count: int,
+    sources: Mapping[PacketSchema, RepeatedSectionSource],
+    active_count_attribute: str | None = None,
+    child_device: Any = None,
+    item_name_factory: Any = None,
+    repr: bool = True,
+) -> Any:
+    """Create a fixed-limit list of nested dataclass records."""
+
+    spec = RepeatedSectionSpec(
+        item_type=section_type,
+        count=count,
+        sources=sources,
+        active_count_attribute=active_count_attribute,
+        child_device=child_device,
+        item_name_factory=item_name_factory,
+    )
+    return field(
+        default_factory=lambda: [section_type() for _ in range(count)],
+        metadata={_REPEATED_SECTION_METADATA_KEY: spec},
+        repr=repr,
+    )
+
+
+def get_field_sources(
+    result_field: Field[Any],
+) -> Mapping[PacketSchema, FieldSource] | None:
+    """Return packet sources attached to a dataclass field."""
+
+    return result_field.metadata.get(_FIELD_SOURCES_METADATA_KEY)
+
+
+def get_field_entities(result_field: Field[Any]) -> tuple[Any, ...]:
+    """Return direct entity descriptions attached to a dataclass field."""
+
+    return result_field.metadata.get(_FIELD_ENTITIES_METADATA_KEY, ())
+
+
+def get_indexed_entities(result_field: Field[Any]) -> tuple[Any, ...]:
+    """Return indexed entity descriptions attached to a list field."""
+
+    return result_field.metadata.get(_INDEXED_ENTITIES_METADATA_KEY, ())
+
+
+def get_section_sources(
+    result_field: Field[Any],
+) -> Mapping[PacketSchema, SectionSource] | None:
+    """Return nested-section packet sources attached to a dataclass field."""
+
+    return result_field.metadata.get(_SECTION_SOURCES_METADATA_KEY)
+
+
+def get_repeated_section(result_field: Field[Any]) -> RepeatedSectionSpec | None:
+    """Return repeated-section metadata attached to a dataclass field."""
+
+    return result_field.metadata.get(_REPEATED_SECTION_METADATA_KEY)
 
 
 def iter_parsed_fields(
@@ -251,22 +415,23 @@ def _iter_parsed_fields(
     result: Any,
     *,
     base_offset: int,
-    path: tuple[str, ...],
+    path: DataPath,
 ) -> Iterator[ParsedField]:
     for result_field in fields(result):
         field_path = (*path, result_field.name)
-        field_sources: Mapping[PacketSchema, FieldSource] | None = (
-            result_field.metadata.get(_FIELD_SOURCES_METADATA_KEY)
-        )
+        field_sources = get_field_sources(result_field)
 
         if field_sources is not None:
             source = field_sources.get(packet)
-            if source is None or not source.applies_to(len(payload) - base_offset):
+            if source is None or not source.applies_to(
+                len(payload),
+                base_offset=base_offset,
+            ):
                 continue
 
             raw_value, value = source.parse_from(payload, base_offset=base_offset)
             yield ParsedField(
-                path=".".join(field_path),
+                path=field_path,
                 value=value,
                 raw_value=raw_value,
                 _target=result,
@@ -274,13 +439,46 @@ def _iter_parsed_fields(
             )
             continue
 
+        repeated_spec = get_repeated_section(result_field)
+        if repeated_spec is not None:
+            repeated_source = repeated_spec.sources.get(packet)
+            if repeated_source is None:
+                continue
+
+            current_value = getattr(result, result_field.name)
+            if not isinstance(current_value, list):
+                raise TypeError(
+                    f"Repeated section {'.'.join(str(part) for part in field_path)} "
+                    "must contain a list"
+                )
+            if len(current_value) != repeated_spec.count:
+                raise ValueError(
+                    f"Repeated section {'.'.join(str(part) for part in field_path)} "
+                    f"contains {len(current_value)} items, expected "
+                    f"{repeated_spec.count}"
+                )
+
+            for index, item in enumerate(current_value):
+                if not is_dataclass(item) or isinstance(item, type):
+                    raise TypeError("Repeated section items must be dataclass instances")
+                yield from _iter_parsed_fields(
+                    payload,
+                    packet,
+                    item,
+                    base_offset=(
+                        base_offset
+                        + repeated_source.offset
+                        + index * repeated_source.stride
+                    ),
+                    path=(*field_path, index),
+                )
+            continue
+
         current_value = getattr(result, result_field.name)
         if not is_dataclass(current_value) or isinstance(current_value, type):
             continue
 
-        section_sources: Mapping[PacketSchema, SectionSource] | None = (
-            result_field.metadata.get(_SECTION_SOURCES_METADATA_KEY)
-        )
+        section_sources = get_section_sources(result_field)
         nested_base_offset = base_offset
         if section_sources is not None:
             section_source = section_sources.get(packet)
@@ -342,6 +540,12 @@ def bits(first_bit: int, bit_count: int) -> Callable[[int], int]:
         raise ValueError("Bit count must be positive")
     mask = (1 << bit_count) - 1
     return lambda value: (value >> first_bit) & mask
+
+
+def multiply_by(multiplier: float) -> Callable[[int | float], float]:
+    """Return a converter multiplying a numeric value."""
+
+    return lambda value: value * multiplier
 
 
 def divide_by(divisor: float) -> Callable[[int | float], float]:
