@@ -235,7 +235,6 @@ def test_field_metadata_contains_source_timestamp_age_and_payload(monkeypatch) -
     }
 
 
-@pytest.mark.known_issue
 def test_notification_length_byte_must_match_actual_frame_length() -> None:
     packet = bytearray(frame(0x22, b"\x05"))
     packet[1] += 1
@@ -246,7 +245,6 @@ def test_notification_length_byte_must_match_actual_frame_length() -> None:
     assert MarstekProtocol.parse_notification(bytes(packet), MarstekData()) is False
 
 
-@pytest.mark.known_issue
 def test_timestamp_zero_is_preserved_in_field_metadata(monkeypatch) -> None:
     data = MarstekData()
     monkeypatch.setattr(
@@ -259,11 +257,9 @@ def test_timestamp_zero_is_preserved_in_field_metadata(monkeypatch) -> None:
     assert metadata["age_seconds"] == 50.0
 
 
-@pytest.mark.known_issue
 def test_empty_device_info_payload_is_rejected() -> None:
     assert MarstekProtocol.parse_notification(frame(0x04, b""), MarstekData()) is False
 
 
-@pytest.mark.known_issue
 def test_empty_meter_ip_payload_is_rejected() -> None:
     assert MarstekProtocol.parse_notification(frame(0x21, b""), MarstekData()) is False
