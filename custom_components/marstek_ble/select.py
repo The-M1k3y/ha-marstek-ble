@@ -56,7 +56,7 @@ async def async_setup_entry(
         MarstekSelect(
             coordinator,
             entry,
-            "ct_polling_rate",
+            "ct_polling_rate_select",
             "CT Polling Rate",
             CMD_CT_POLLING_RATE_WRITE,
             {
