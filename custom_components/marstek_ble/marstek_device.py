@@ -132,7 +132,7 @@ class MarstekData:
         payload: bytes | None = None,
     ) -> None:
         """Record when a field was last updated and by which command."""
-        ts = timestamp or time.time()
+        ts = timestamp if timestamp is not None else time.time()
         self.field_updates[field] = {
             "command": command,
             "timestamp": ts,
@@ -146,12 +146,12 @@ class MarstekData:
             return None
 
         timestamp = entry.get("timestamp")
-        age = time.time() - timestamp if timestamp else None
+        age = time.time() - timestamp if timestamp is not None else None
         return {
             "command": entry.get("command"),
             "command_hex": f"0x{entry['command']:02X}" if entry.get("command") is not None else None,
             "timestamp": datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
-            if timestamp
+            if timestamp is not None
             else None,
             "age_seconds": age,
             "payload_hex": entry.get("payload_hex"),
@@ -202,6 +202,14 @@ class MarstekProtocol:
 
         if data[0] != 0x73 or data[2] != 0x23:
             _LOGGER.warning("Invalid header: %02X %02X %02X", data[0], data[1], data[2])
+            return False
+
+        if data[1] != len(data):
+            _LOGGER.warning(
+                "Invalid notification length: declared %d, actual %d",
+                data[1],
+                len(data),
+            )
             return False
 
         # Verify XOR checksum
@@ -379,6 +387,9 @@ class MarstekProtocol:
         payload: bytes, device_data: MarstekData, timestamp: float
     ) -> bool:
         """Parse device info (0x04) - ASCII key=value pairs."""
+        if not payload:
+            return False
+
         try:
             info_str = payload.decode("ascii", errors="ignore")
             pairs = info_str.split(",")
@@ -593,6 +604,9 @@ class MarstekProtocol:
         payload: bytes, device_data: MarstekData, timestamp: float
     ) -> bool:
         """Parse meter IP (0x21)."""
+        if not payload:
+            return False
+
         try:
             # Check if all 0xFF (not set)
             if all(b == 0xFF for b in payload):
@@ -808,9 +822,28 @@ class MarstekBLEDevice:
                         self._notifications_started,
                     )
 
-            except (BleakError, TimeoutError) as ex:
+            except Exception as ex:  # noqa: BLE001
+                client = self._client
+                self._client = None
+                self._notifications_started = False
+
+                if client and client.is_connected:
+                    self._expected_disconnect = True
+                    try:
+                        await client.disconnect()
+                    except Exception as cleanup_error:  # noqa: BLE001
+                        _LOGGER.debug(
+                            "%s: Failed to clean up partial connection: %s",
+                            self._device_name,
+                            cleanup_error,
+                        )
+                    finally:
+                        self._expected_disconnect = False
+
                 _LOGGER.warning(
-                    "%s: Failed to connect: %s", self._device_name, ex
+                    "%s: Failed to connect or initialize notifications: %s",
+                    self._device_name,
+                    ex,
                 )
                 raise
 
@@ -917,13 +950,14 @@ class MarstekBLEDevice:
                         VERBOSE_LOGGER.debug(
                             "%s: Command 0x%02X sent and response received",
                             self._device_name,
-                            cmd
+                            cmd,
                         )
                     except asyncio.TimeoutError:
+                        last_error = "no_response"
                         _LOGGER.warning(
                             "%s: Timeout waiting for response to command 0x%02X",
                             self._device_name,
-                            cmd
+                            cmd,
                         )
                     finally:
                         # Clear waiting state
@@ -931,24 +965,33 @@ class MarstekBLEDevice:
                         self._response_event = None
 
                     duration = time.monotonic() - start_time
-                    self._record_command_result(
-                        cmd=cmd,
-                        frame=command_data,
-                        attempts=attempts_made,
-                        success=response_received,
-                        error=None if response_received else "no_response",
-                    )
+                    if response_received:
+                        self._record_command_result(
+                            cmd=cmd,
+                            frame=command_data,
+                            attempts=attempts_made,
+                            success=True,
+                            error=None,
+                        )
+                        VERBOSE_LOGGER.debug(
+                            "%s: Command 0x%02X succeeded in %.3fs after %d attempt(s)",
+                            self._device_name,
+                            cmd,
+                            duration,
+                            attempts_made,
+                        )
+                        return True
+
                     VERBOSE_LOGGER.debug(
-                        "%s: Command 0x%02X %s in %.3fs after %d attempt(s)",
+                        "%s: Command 0x%02X had no response in %.3fs on attempt %d/%d",
                         self._device_name,
                         cmd,
-                        "succeeded" if response_received else "had no response",
                         duration,
                         attempts_made,
+                        retry,
                     )
-                    return response_received
 
-                except (BleakError, TimeoutError) as ex:
+                except Exception as ex:  # noqa: BLE001
                     last_error = str(ex)
                     duration = time.monotonic() - start_time
                     _LOGGER.warning(
@@ -960,6 +1003,9 @@ class MarstekBLEDevice:
                         duration,
                         ex,
                     )
+                    self._pending_command = None
+                    self._response_event = None
+
                     # Force reconnect on next attempt
                     if self._client:
                         self._expected_disconnect = True
@@ -967,7 +1013,10 @@ class MarstekBLEDevice:
                             await self._client.disconnect()
                         except Exception:
                             pass
+                        finally:
+                            self._expected_disconnect = False
                         self._client = None
+                        self._notifications_started = False
 
                     if attempt < retry - 1:
                         await asyncio.sleep(0.5)
