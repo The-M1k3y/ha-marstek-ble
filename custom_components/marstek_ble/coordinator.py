@@ -462,6 +462,9 @@ class MarstekDataUpdateCoordinator(ActiveBluetoothDataUpdateCoordinator[None]):
         # Timer info
         await self._safe_send_and_sleep(CMD_TIMER_INFO)
 
+        # Local API status
+        await self._safe_send_and_sleep(CMD_LOCAL_API_STATUS)
+
         # Logs
         await self._safe_send_and_sleep(CMD_LOGS)
 
