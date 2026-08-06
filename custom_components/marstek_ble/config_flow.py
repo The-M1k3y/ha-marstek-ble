@@ -59,8 +59,6 @@ class MarstekBLEConfigFlow(ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(discovery_info.address)
         self._abort_if_unique_id_configured()
 
-        # Check if a device with the same name is already configured
-        # This prevents duplicate discovery when devices use random MAC addresses
         device_name = discovery_info.name
         if device_name:
             for entry in self._async_current_entries():
@@ -74,14 +72,9 @@ class MarstekBLEConfigFlow(ConfigFlow, domain=DOMAIN):
                     return self.async_abort(reason="already_configured")
 
         self._discovery_info = discovery_info
-
-        # Set title placeholders for discovery card
         device_name = discovery_info.name or discovery_info.address
         _LOGGER.info("Setting title_placeholders: name=%s", device_name)
-        self.context["title_placeholders"] = {
-            "name": device_name,
-        }
-
+        self.context["title_placeholders"] = {"name": device_name}
         return await self.async_step_bluetooth_confirm()
 
     async def async_step_bluetooth_confirm(
@@ -100,7 +93,6 @@ class MarstekBLEConfigFlow(ConfigFlow, domain=DOMAIN):
             )
 
         self._set_confirm_only()
-
         return self.async_show_form(
             step_id="bluetooth_confirm",
             data_schema=vol.Schema({}),
@@ -115,7 +107,16 @@ class MarstekBLEConfigFlow(ConfigFlow, domain=DOMAIN):
         """Handle the user step to pick discovered device."""
         if user_input is not None:
             address = user_input[CONF_ADDRESS]
-            discovery_info = self._discovered_devices[address]
+            discovery_info = self._discovered_devices.get(address)
+            if discovery_info is None:
+                _LOGGER.warning("Selected unknown Marstek BLE address: %s", address)
+                if not self._discovered_devices:
+                    return self.async_abort(reason="no_devices_found")
+                return self.async_show_form(
+                    step_id="user",
+                    data_schema=self._get_user_schema(),
+                    errors={CONF_ADDRESS: "invalid_selection"},
+                )
 
             await self.async_set_unique_id(address, raise_on_progress=False)
             self._abort_if_unique_id_configured()
@@ -128,10 +129,7 @@ class MarstekBLEConfigFlow(ConfigFlow, domain=DOMAIN):
                 },
             )
 
-        # Discover devices
         current_addresses = self._async_current_ids()
-
-        # Get list of configured device names to prevent duplicates
         configured_names = {
             entry.data.get(CONF_NAME)
             for entry in self._async_current_entries()
@@ -144,14 +142,9 @@ class MarstekBLEConfigFlow(ConfigFlow, domain=DOMAIN):
                 discovery_info.name,
                 discovery_info.address,
             )
-
-            # Check if device is already configured by address
             if discovery_info.address in current_addresses:
                 _LOGGER.debug("Device already configured: %s", discovery_info.name)
                 continue
-
-            # Check if device with same name is already configured
-            # This prevents duplicate discovery when devices use random MAC addresses
             if discovery_info.name and discovery_info.name in configured_names:
                 _LOGGER.debug(
                     "Device with name %s already configured, skipping address %s",
@@ -159,8 +152,6 @@ class MarstekBLEConfigFlow(ConfigFlow, domain=DOMAIN):
                     discovery_info.address,
                 )
                 continue
-
-            # Check if device name matches battery prefixes (not CT devices)
             if not discovery_info.name or not any(
                 discovery_info.name.startswith(prefix) for prefix in DEVICE_PREFIXES
             ):
@@ -177,10 +168,7 @@ class MarstekBLEConfigFlow(ConfigFlow, domain=DOMAIN):
         if not self._discovered_devices:
             return self.async_abort(reason="no_devices_found")
 
-        return self.async_show_form(
-            step_id="user",
-            data_schema=self._get_user_schema(),
-        )
+        return self.async_show_form(step_id="user", data_schema=self._get_user_schema())
 
     def _get_user_schema(self) -> vol.Schema:
         """Get the user schema."""
