@@ -225,6 +225,7 @@ async def test_fast_and_medium_poll_command_sequences(monkeypatch, hass, ble_dev
         (CMD_NETWORK_INFO, b"", 0.3),
         (CMD_DEVICE_INFO, b"", 0.3),
         (CMD_TIMER_INFO, b"", 0.3),
+        (CMD_LOCAL_API_STATUS, b"", 0.3),
         (CMD_LOGS, b"", 0.3),
     ]
 
@@ -260,7 +261,6 @@ async def test_wait_ready_returns_immediately_when_event_is_set(hass, ble_device
     assert await coordinator.async_wait_ready() is True
 
 
-@pytest.mark.known_issue
 @pytest.mark.asyncio
 async def test_medium_poll_includes_local_api_status(monkeypatch, hass, ble_device) -> None:
     coordinator = make_coordinator(hass, ble_device)
