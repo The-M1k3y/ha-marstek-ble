@@ -115,7 +115,14 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         domain_data.get("coordinator") if domain_data else None
     )
     if coordinator:
-        await coordinator.device.disconnect()
+        try:
+            await coordinator.device.disconnect()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning(
+                "Failed to disconnect Marstek BLE device while unloading %s: %s",
+                entry.entry_id,
+                err,
+            )
 
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
