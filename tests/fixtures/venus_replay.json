@@ -1,0 +1,138 @@
+{
+  "format_version": 1,
+  "provenance": "synthetic",
+  "product": "Venus",
+  "description": "Plausible generated packets with unknown and unused fields set to zero.",
+  "packets": [
+    {
+      "name": "short_runtime",
+      "command": "0x03",
+      "payload_hex": "00000000000000000000000000000003010000000903000000000000010000000000000000",
+      "expected": {
+        "wifi_connected": true,
+        "mqtt_connected": true,
+        "out1_active": true,
+        "out1_power": 777.0,
+        "extern1_connected": true
+      }
+    },
+    {
+      "name": "device_info",
+      "command": "0x04",
+      "payload_hex": "747970653d484d472d35302c69643d73796e7468657469632d6465766963652c736e3d53594e5448455449432d303030312c6d61633d30323a30303a30303a30303a30303a30312c6465765f7665723d3230323630313031303030302c68773d33",
+      "expected": {
+        "device_type": "HMG-50",
+        "device_id": "synthetic-device",
+        "serial_number": "SYNTHETIC-0001",
+        "mac_address": "02:00:00:00:00:01",
+        "firmware_version": "202601010000",
+        "hardware_version": "3"
+      }
+    },
+    {
+      "name": "bms",
+      "command": "0x14",
+      "payload_hex": "d7003b02f4018403520063000014ad1385ff180000000000000007007856341200dd6d0000001f001500160017001800440c450c460c470c480c490c4a0c4b0c4c0c4d0c4e0c4f0c500c510c520c530c",
+      "expected": {
+        "bms_version": 215,
+        "voltage_limit": 57.1,
+        "charge_current_limit": 50.0,
+        "discharge_current_limit": 90.0,
+        "battery_soc": 82.0,
+        "battery_soh": 99.0,
+        "design_capacity": 5120.0,
+        "battery_voltage": 50.37,
+        "battery_current": -12.3,
+        "battery_temp": 24.0,
+        "error_code": 7,
+        "warning_code": 305419896,
+        "runtime_hours": 2.0,
+        "mosfet_temp": 31.0,
+        "temp_sensor_1": 21.0,
+        "temp_sensor_2": 22.0,
+        "temp_sensor_3": 23.0,
+        "temp_sensor_4": 24.0,
+        "cell_voltages": [
+          3.14,
+          3.141,
+          3.142,
+          3.1430000000000002,
+          3.144,
+          3.145,
+          3.146,
+          3.1470000000000002,
+          3.148,
+          3.149,
+          3.15,
+          3.1510000000000002,
+          3.152,
+          3.153,
+          3.154,
+          3.1550000000000002
+        ]
+      }
+    },
+    {
+      "name": "network",
+      "command": "0x24",
+      "payload_hex": "69703a3139322e302e322e31302c676174653a3139322e302e322e312c6d61736b3a3235352e3235352e3235352e302c646e733a3139322e302e322e3533",
+      "expected": {
+        "network_info": "ip:192.0.2.10,gate:192.0.2.1,mask:255.255.255.0,dns:192.0.2.53",
+        "ip_address": "192.0.2.10",
+        "gateway": "192.0.2.1",
+        "subnet_mask": "255.255.255.0",
+        "dns_server": "192.0.2.53"
+      }
+    },
+    {
+      "name": "meter_ip",
+      "command": "0x21",
+      "payload_hex": "3139322e302e322e323000",
+      "expected": {
+        "meter_ip": "192.0.2.20"
+      }
+    },
+    {
+      "name": "ct_polling_rate",
+      "command": "0x22",
+      "payload_hex": "77",
+      "expected": {
+        "ct_polling_rate": 119
+      }
+    },
+    {
+      "name": "local_api",
+      "command": "0x28",
+      "payload_hex": "01901f",
+      "expected": {
+        "local_api_status": "enabled/8080"
+      }
+    }
+  ],
+  "final_expected": {
+    "battery_soc": 82.0,
+    "battery_voltage": 50.37,
+    "cell_voltages": [
+      3.14,
+      3.141,
+      3.142,
+      3.1430000000000002,
+      3.144,
+      3.145,
+      3.146,
+      3.1470000000000002,
+      3.148,
+      3.149,
+      3.15,
+      3.1510000000000002,
+      3.152,
+      3.153,
+      3.154,
+      3.1550000000000002
+    ],
+    "ip_address": "192.0.2.10",
+    "meter_ip": "192.0.2.20",
+    "ct_polling_rate": 119,
+    "local_api_status": "enabled/8080"
+  }
+}
