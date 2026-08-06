@@ -138,7 +138,6 @@ async def test_diagnostics_reports_missing_coordinator() -> None:
     }
 
 
-@pytest.mark.known_issue
 @pytest.mark.asyncio
 async def test_diagnostics_redacts_all_device_identifiers() -> None:
     hass = HomeAssistant()
