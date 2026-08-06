@@ -260,7 +260,6 @@ async def test_wait_ready_returns_immediately_when_event_is_set(hass, ble_device
     assert await coordinator.async_wait_ready() is True
 
 
-@pytest.mark.known_issue
 @pytest.mark.asyncio
 async def test_medium_poll_includes_local_api_status(monkeypatch, hass, ble_device) -> None:
     coordinator = make_coordinator(hass, ble_device)
