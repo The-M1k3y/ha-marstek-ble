@@ -1,12 +1,17 @@
 [tool.mutmut]
-source_paths = [
-    "custom_components/marstek_ble/",
-    "standalone_test/",
-]
-do_not_mutate = [
-    "custom_components/marstek_ble/schema.py",
-    "custom_components/marstek_ble/entity.py",
-    "custom_components/marstek_ble/products/*",
+paths_to_mutate = [
+    "custom_components/marstek_ble/__init__.py",
+    "custom_components/marstek_ble/binary_sensor.py",
+    "custom_components/marstek_ble/button.py",
+    "custom_components/marstek_ble/config_flow.py",
+    "custom_components/marstek_ble/const.py",
+    "custom_components/marstek_ble/coordinator.py",
+    "custom_components/marstek_ble/diagnostics.py",
+    "custom_components/marstek_ble/marstek_device.py",
+    "custom_components/marstek_ble/select.py",
+    "custom_components/marstek_ble/sensor.py",
+    "custom_components/marstek_ble/switch.py",
+    "standalone_test/marstek_basic_info.py",
 ]
 pytest_add_cli_args_test_selection = [
     "-m",
