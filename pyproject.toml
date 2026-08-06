@@ -1,0 +1,18 @@
+[tool.mutmut]
+source_paths = [
+    "custom_components/marstek_ble/",
+    "standalone_test/",
+]
+do_not_mutate = [
+    "custom_components/marstek_ble/schema.py",
+    "custom_components/marstek_ble/entity.py",
+    "custom_components/marstek_ble/products/*",
+]
+pytest_add_cli_args_test_selection = [
+    "-m",
+    "not known_issue",
+    "tests/",
+]
+mutate_only_covered_lines = true
+max_stack_depth = 12
+cache_invalidation_files = ["tests/fixtures/*.json"]
