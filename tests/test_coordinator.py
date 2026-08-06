@@ -157,11 +157,15 @@ async def test_poll_cycle_runs_medium_initially_then_by_cycle(monkeypatch, hass,
 
     async def fast():
         calls.append("fast")
-        coordinator._current_poll_commands.append({"success": True})
+        coordinator._current_poll_commands.append(
+            {"cmd": CMD_RUNTIME_INFO, "success": True, "duration": 0.0}
+        )
 
     async def medium():
         calls.append("medium")
-        coordinator._current_poll_commands.append({"success": True})
+        coordinator._current_poll_commands.append(
+            {"cmd": CMD_SYSTEM_DATA, "success": True, "duration": 0.0}
+        )
 
     monkeypatch.setattr(coordinator, "_poll_fast", fast)
     monkeypatch.setattr(coordinator, "_poll_medium", medium)
