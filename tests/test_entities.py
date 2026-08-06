@@ -75,7 +75,6 @@ async def test_all_platform_setup_functions_create_expected_entities() -> None:
     }
 
 
-@pytest.mark.known_issue
 @pytest.mark.asyncio
 async def test_entity_unique_ids_are_unique_across_platforms() -> None:
     coordinator_instance = coordinator()
