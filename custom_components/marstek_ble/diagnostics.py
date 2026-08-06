@@ -21,6 +21,10 @@ TO_REDACT = {
     "network_info",
     "mac_address",
     "device_id",
+    "serial_number",
+    "address",
+    "bluetooth_address",
+    "unique_id",
 }
 
 
