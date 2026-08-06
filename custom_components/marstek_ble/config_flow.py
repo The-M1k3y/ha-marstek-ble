@@ -115,7 +115,15 @@ class MarstekBLEConfigFlow(ConfigFlow, domain=DOMAIN):
         """Handle the user step to pick discovered device."""
         if user_input is not None:
             address = user_input[CONF_ADDRESS]
-            discovery_info = self._discovered_devices[address]
+            discovery_info = self._discovered_devices.get(address)
+            if discovery_info is None:
+                _LOGGER.warning("Selected unknown Marstek BLE address: %s", address)
+                if not self._discovered_devices:
+                    return self.async_abort(reason="no_devices_found")
+                return self.async_show_form(
+                    step_id="user",
+                    data_schema=self._get_user_schema(),
+                )
 
             await self.async_set_unique_id(address, raise_on_progress=False)
             self._abort_if_unique_id_configured()

@@ -143,7 +143,6 @@ async def test_options_flow_uses_defaults_and_saves_input() -> None:
     }
 
 
-@pytest.mark.known_issue
 @pytest.mark.asyncio
 async def test_user_step_handles_unknown_selected_address() -> None:
     config_flow = flow()
