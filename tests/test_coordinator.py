@@ -275,7 +275,6 @@ async def test_medium_poll_includes_local_api_status(monkeypatch, hass, ble_devi
     assert CMD_LOCAL_API_STATUS in calls
 
 
-@pytest.mark.known_issue
 def test_notification_parser_exception_is_contained(hass, ble_device) -> None:
     coordinator = make_coordinator(hass, ble_device)
 
