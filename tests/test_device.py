@@ -243,7 +243,6 @@ def test_command_and_notification_history_is_bounded(ble_device) -> None:
     assert diagnostics["overall"]["total_sent"] == 30
 
 
-@pytest.mark.known_issue
 @pytest.mark.asyncio
 async def test_send_command_handles_unexpected_transport_exception(
     monkeypatch, ble_device
@@ -262,7 +261,6 @@ async def test_send_command_handles_unexpected_transport_exception(
     assert device.get_diagnostics()["overall"]["failure"] == 1
 
 
-@pytest.mark.known_issue
 @pytest.mark.asyncio
 async def test_no_response_consumes_configured_retry_budget(
     monkeypatch, ble_device
@@ -286,7 +284,6 @@ async def test_no_response_consumes_configured_retry_budget(
     assert device.get_diagnostics()["recent_commands"][0]["attempts"] == 3
 
 
-@pytest.mark.known_issue
 @pytest.mark.asyncio
 async def test_notification_setup_failure_does_not_leave_half_connected_client(
     monkeypatch, ble_device
