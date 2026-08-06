@@ -225,6 +225,7 @@ async def test_fast_and_medium_poll_command_sequences(monkeypatch, hass, ble_dev
         (CMD_NETWORK_INFO, b"", 0.3),
         (CMD_DEVICE_INFO, b"", 0.3),
         (CMD_TIMER_INFO, b"", 0.3),
+        (CMD_LOCAL_API_STATUS, b"", 0.3),
         (CMD_LOGS, b"", 0.3),
     ]
 
