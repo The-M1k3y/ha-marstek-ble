@@ -472,11 +472,12 @@ class MarstekDataUpdateCoordinator(ActiveBluetoothDataUpdateCoordinator[None]):
         """Handle notification from device."""
         raw_data = bytes(data)
         cmd = raw_data[3] if len(raw_data) > 3 else None
+        command_label = f"0x{cmd:02X}" if cmd is not None else "unknown"
         VERBOSE_LOGGER.debug(
             "[%s/%s] Received notification cmd=%s from sender %s: %s",
             self.device_name,
             self.address,
-            f"0x{cmd:02X}" if cmd is not None else "unknown",
+            command_label,
             sender,
             raw_data.hex()
         )
@@ -488,14 +489,25 @@ class MarstekDataUpdateCoordinator(ActiveBluetoothDataUpdateCoordinator[None]):
             self.data.battery_soc,
         )
 
-        result = self._protocol.parse_notification(raw_data, self.data)
+        try:
+            result = self._protocol.parse_notification(raw_data, self.data)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.exception(
+                "[%s/%s] Notification parser failed for cmd=%s: %s",
+                self.device_name,
+                self.address,
+                command_label,
+                err,
+            )
+            result = False
+
         self.device.record_notification(sender, raw_data, result)
 
         VERBOSE_LOGGER.debug(
             "[%s/%s] Parse result for cmd=%s: %s, data after parsing: battery_voltage=%s, battery_soc=%s",
             self.device_name,
             self.address,
-            f"0x{cmd:02X}" if cmd is not None else "unknown",
+            command_label,
             result,
             self.data.battery_voltage,
             self.data.battery_soc
