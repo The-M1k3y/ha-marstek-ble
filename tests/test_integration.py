@@ -187,7 +187,6 @@ async def test_failed_platform_unload_preserves_domain_data() -> None:
     assert entry.entry_id in hass.data[DOMAIN]
 
 
-@pytest.mark.known_issue
 @pytest.mark.asyncio
 async def test_disconnect_failure_does_not_prevent_platform_unload_and_cleanup() -> None:
     entry = FakeEntry()
