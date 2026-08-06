@@ -290,7 +290,6 @@ async def test_session_connect_rejects_connection_service_and_characteristic_fai
         ).connect()
 
 
-@pytest.mark.known_issue
 @pytest.mark.asyncio
 async def test_session_connect_failure_cleans_partial_connection() -> None:
     api = SessionApi(include_service=False)
@@ -420,7 +419,6 @@ async def test_collect_device_data_aborts_after_three_consecutive_failures(
     assert CollectionSession.instances[0].close_calls == 1
 
 
-@pytest.mark.known_issue
 @pytest.mark.asyncio
 async def test_collect_device_data_closes_session_when_connect_fails(
     monkeypatch,

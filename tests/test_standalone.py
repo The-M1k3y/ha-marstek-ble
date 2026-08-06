@@ -21,7 +21,6 @@ def test_frame_buffer_handles_noise_fragmentation_and_multiple_frames() -> None:
     assert buffer.feed(first[3:] + second) == [first, second]
 
 
-@pytest.mark.known_issue
 def test_frame_buffer_recovers_from_spurious_start_byte_in_noise() -> None:
     packet = standalone.create_command_frame(0x03)
     buffer = standalone.FrameBuffer()
