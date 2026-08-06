@@ -55,30 +55,70 @@ class FrameBuffer:
     def __init__(self) -> None:
         self._buffer = bytearray()
 
+    def _is_complete_valid_frame(self, offset: int) -> bool:
+        """Return whether a complete valid frame starts at the given offset."""
+        remaining = len(self._buffer) - offset
+        if remaining < 5:
+            return False
+        if self._buffer[offset] != START_BYTE:
+            return False
+
+        frame_len = self._buffer[offset + 1]
+        if frame_len < 5 or remaining < frame_len:
+            return False
+        if self._buffer[offset + 2] != IDENTIFIER_BYTE:
+            return False
+
+        checksum = 0
+        for value in self._buffer[offset : offset + frame_len - 1]:
+            checksum ^= value
+
+        return checksum == self._buffer[offset + frame_len - 1]
+
+    def _find_complete_valid_frame(self, start: int) -> int | None:
+        """Find the next complete valid frame at or after start."""
+        offset = self._buffer.find(bytes((START_BYTE,)), start)
+        while offset >= 0:
+            if self._is_complete_valid_frame(offset):
+                return offset
+            offset = self._buffer.find(bytes((START_BYTE,)), offset + 1)
+        return None
+
     def feed(self, chunk: bytes | bytearray) -> list[bytes]:
         frames: list[bytes] = []
         self._buffer.extend(chunk)
         while True:
             if len(self._buffer) < 2:
                 break
+
             if self._buffer[0] != START_BYTE:
-                # Drop noise until we see the next frame start byte
-                self._buffer.pop(0)
+                next_start = self._buffer.find(bytes((START_BYTE,)))
+                if next_start < 0:
+                    self._buffer.clear()
+                    break
+                del self._buffer[:next_start]
                 continue
+
             frame_len = self._buffer[1]
             if frame_len < 5:
                 self._buffer.pop(0)
                 continue
+
             if len(self._buffer) < frame_len:
-                # A noise byte may equal START_BYTE (for example ASCII "s").
-                # If a later complete frame is already buffered, resynchronise to it.
-                next_start = self._buffer.find(bytes((START_BYTE,)), 1)
-                if next_start >= 0 and len(self._buffer) - next_start >= 2:
-                    next_len = self._buffer[next_start + 1]
-                    if next_len >= 5 and len(self._buffer) - next_start >= next_len:
-                        del self._buffer[:next_start]
-                        continue
+                next_frame = self._find_complete_valid_frame(1)
+                if next_frame is not None:
+                    del self._buffer[:next_frame]
+                    continue
                 break
+
+            if not self._is_complete_valid_frame(0):
+                next_frame = self._find_complete_valid_frame(1)
+                if next_frame is not None:
+                    del self._buffer[:next_frame]
+                else:
+                    self._buffer.pop(0)
+                continue
+
             frame = bytes(self._buffer[:frame_len])
             del self._buffer[:frame_len]
             frames.append(frame)
