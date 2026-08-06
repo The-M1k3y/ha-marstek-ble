@@ -66,10 +66,18 @@ class FrameBuffer:
                 self._buffer.pop(0)
                 continue
             frame_len = self._buffer[1]
-            if frame_len <= 0:
+            if frame_len < 5:
                 self._buffer.pop(0)
                 continue
             if len(self._buffer) < frame_len:
+                # A noise byte may equal START_BYTE (for example ASCII "s").
+                # If a later complete frame is already buffered, resynchronise to it.
+                next_start = self._buffer.find(bytes((START_BYTE,)), 1)
+                if next_start >= 0 and len(self._buffer) - next_start >= 2:
+                    next_len = self._buffer[next_start + 1]
+                    if next_len >= 5 and len(self._buffer) - next_start >= next_len:
+                        del self._buffer[:next_start]
+                        continue
                 break
             frame = bytes(self._buffer[:frame_len])
             del self._buffer[:frame_len]
@@ -159,6 +167,7 @@ class CommandType:
     METER_IP = 0x21
     NETWORK_INFO = 0x24
 
+
 def create_command_frame(command: int, payload: bytes | bytearray | None = None) -> bytes:
     payload_bytes = bytes(payload or b"")
     total_length = len(payload_bytes) + 5  # 0x73, len, 0x23, cmd, checksum
@@ -215,7 +224,6 @@ async def discover_devices(
     unsubscribe function once all BLE activity is finished.
     """
 
-    loop = asyncio.get_running_loop()
     event = asyncio.Event()
     resolved: dict[str, ResolvedDevice] = {}
     auto_found: list[ResolvedDevice] = []
@@ -442,48 +450,52 @@ class BLEDeviceSession:
             if not first_event.done():
                 first_event.set_result((connected, error))
 
-        self._connection_unsub = await self._api.bluetooth_device_connect(
-            address=self._device.address,
-            on_bluetooth_connection_state=_on_state,
-            timeout=self._connect_timeout,
-            feature_flags=self._ble_feature_flags,
-            has_cache=False,
-            address_type=self._device.address_type,
-        )
-
-        connected, error = await first_event
-        if not connected:
-            raise RuntimeError(
-                f"BLE connection to {self._device.label} failed: {connection_error_to_text(error)}"
+        try:
+            self._connection_unsub = await self._api.bluetooth_device_connect(
+                address=self._device.address,
+                on_bluetooth_connection_state=_on_state,
+                timeout=self._connect_timeout,
+                feature_flags=self._ble_feature_flags,
+                has_cache=False,
+                address_type=self._device.address_type,
             )
 
-        services = await self._api.bluetooth_gatt_get_services(self._device.address)
-        target_service = next(
-            (svc for svc in services.services if svc.uuid.lower() == SERVICE_UUID),
-            None,
-        )
-        if not target_service:
-            raise RuntimeError("Marstek service 0xFF00 not found in GATT table")
+            connected, error = await first_event
+            if not connected:
+                raise RuntimeError(
+                    f"BLE connection to {self._device.label} failed: {connection_error_to_text(error)}"
+                )
 
-        tx_char = next(
-            (char for char in target_service.characteristics if char.uuid.lower() == TX_CHAR_UUID),
-            None,
-        )
-        rx_char = next(
-            (char for char in target_service.characteristics if char.uuid.lower() == RX_CHAR_UUID),
-            None,
-        )
-        if not tx_char or not rx_char:
-            raise RuntimeError("Marstek characteristics FF01/FF02 not found")
+            services = await self._api.bluetooth_gatt_get_services(self._device.address)
+            target_service = next(
+                (svc for svc in services.services if svc.uuid.lower() == SERVICE_UUID),
+                None,
+            )
+            if not target_service:
+                raise RuntimeError("Marstek service 0xFF00 not found in GATT table")
 
-        self._tx_handle = tx_char.handle
-        self._rx_handle = rx_char.handle
+            tx_char = next(
+                (char for char in target_service.characteristics if char.uuid.lower() == TX_CHAR_UUID),
+                None,
+            )
+            rx_char = next(
+                (char for char in target_service.characteristics if char.uuid.lower() == RX_CHAR_UUID),
+                None,
+            )
+            if not tx_char or not rx_char:
+                raise RuntimeError("Marstek characteristics FF01/FF02 not found")
 
-        self._stop_notify, self._notify_remove = await self._api.bluetooth_gatt_start_notify(
-            self._device.address,
-            self._rx_handle,
-            self._handle_notification,
-        )
+            self._tx_handle = tx_char.handle
+            self._rx_handle = rx_char.handle
+
+            self._stop_notify, self._notify_remove = await self._api.bluetooth_gatt_start_notify(
+                self._device.address,
+                self._rx_handle,
+                self._handle_notification,
+            )
+        except Exception:
+            await self.close()
+            raise
 
     async def close(self) -> None:
         if self._closed:
@@ -538,7 +550,13 @@ class BLEDeviceSession:
                     self._device.label,
                 )
 
-    async def send_command(self, command: int, description: str, payload: bytes | bytearray = b"", timeout: Optional[float] = None) -> bytes:
+    async def send_command(
+        self,
+        command: int,
+        description: str,
+        payload: bytes | bytearray = b"",
+        timeout: Optional[float] = None,
+    ) -> bytes:
         if self._tx_handle is None:
             raise RuntimeError("TX characteristic not initialized")
 
@@ -561,6 +579,7 @@ class BLEDeviceSession:
                 queue.remove(future)
             raise
 
+
 COMMAND_DELAY_SECONDS = 0.15
 MAX_CONSECUTIVE_FAILURES = 3
 
@@ -581,10 +600,10 @@ async def collect_device_data(
         connect_timeout=connect_timeout,
         command_timeout=command_timeout,
     )
-    await session.connect()
     results: dict[str, Dict[str, Any]] = {}
 
     try:
+        await session.connect()
         consecutive_failures = 0
         for spec in SAFE_COMMANDS:
             logging.info("↪️  %s: reading %s (0x%02X)", device.label, spec.name, spec.command_id)
@@ -763,7 +782,11 @@ def parse_system_data(payload: bytes) -> Dict[str, Any]:
     }
 
 
-def _parse_records(payload: bytes, record_size: int, parser: Callable[[bytes], Optional[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+def _parse_records(
+    payload: bytes,
+    record_size: int,
+    parser: Callable[[bytes], Optional[Dict[str, Any]]],
+) -> List[Dict[str, Any]]:
     records: List[Dict[str, Any]] = []
     for offset in range(0, len(payload) - record_size + 1, record_size):
         chunk = payload[offset : offset + record_size]
@@ -944,7 +967,9 @@ def flatten_metrics(data: Dict[str, Any]) -> Dict[str, str]:
     return {k.lstrip("."): v for k, v in flat.items()}
 
 
-def render_summary_table(device_labels: List[str], per_device_data: Dict[str, Dict[str, Any]]) -> str:
+def render_summary_table(
+    device_labels: List[str], per_device_data: Dict[str, Dict[str, Any]]
+) -> str:
     flattened = {label: flatten_metrics(per_device_data.get(label, {})) for label in device_labels}
     row_keys: List[str] = []
     for label in device_labels:
