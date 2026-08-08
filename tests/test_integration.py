@@ -14,8 +14,10 @@ import custom_components.marstek_ble as integration_module
 from custom_components.marstek_ble.const import (
     CONF_MEDIUM_POLL_INTERVAL,
     CONF_POLL_INTERVAL,
+    CONF_PRODUCT_ID,
     DOMAIN,
 )
+from custom_components.marstek_ble.products import VENUS_RUNTIME
 
 
 class FakeConfigEntries:
@@ -43,10 +45,13 @@ class FakeEntry:
         address="AA:BB:CC:DD:EE:FF",
         name="Battery",
         options=None,
+        product_id=None,
     ):
         self.entry_id = "entry-1"
         self.title = name
         self.data = {CONF_ADDRESS: address, CONF_NAME: name}
+        if product_id is not None:
+            self.data[CONF_PRODUCT_ID] = product_id
         self.options = dict(options or {})
         self.runtime_data = None
         self.unload_callbacks = []
@@ -101,7 +106,8 @@ def make_hass(entry=None):
 @pytest.mark.asyncio
 async def test_setup_entry_creates_coordinator_device_and_platforms(monkeypatch) -> None:
     entry = FakeEntry(
-        options={CONF_POLL_INTERVAL: 3, CONF_MEDIUM_POLL_INTERVAL: 75}
+        options={CONF_POLL_INTERVAL: 3, CONF_MEDIUM_POLL_INTERVAL: 75},
+        product_id="venus",
     )
     hass = make_hass(entry)
     ble = BLEDevice(entry.data[CONF_ADDRESS], "MST_ACCP_TEST")
@@ -114,13 +120,46 @@ async def test_setup_entry_creates_coordinator_device_and_platforms(monkeypatch)
     assert entry.runtime_data is coordinator
     assert coordinator.kwargs["poll_interval"] == 3
     assert coordinator.kwargs["medium_poll_interval"] == 75
+    assert coordinator.kwargs["product"] is VENUS_RUNTIME
     assert len(entry.unload_callbacks) == 2
     assert entry.update_listener is integration_module._async_handle_entry_update
     assert hass.data[DOMAIN][entry.entry_id]["coordinator"] is coordinator
+    assert hass.data[DOMAIN][entry.entry_id]["product_id"] == "venus"
     assert hass.config_entries.forward_calls[0][1] == integration_module.PLATFORMS
     registry_call = hass._device_registry.calls[0]
     assert registry_call["name"] == "Battery"
     assert registry_call["model"] == "Venus E"
+
+
+@pytest.mark.asyncio
+async def test_setup_entry_legacy_entry_falls_back_to_venus(monkeypatch) -> None:
+    entry = FakeEntry(name="Friendly Name")
+    hass = make_hass(entry)
+    hass._ble_devices[entry.data[CONF_ADDRESS].upper()] = BLEDevice(
+        entry.data[CONF_ADDRESS], "Unknown Legacy Name"
+    )
+    monkeypatch.setattr(
+        integration_module, "MarstekDataUpdateCoordinator", FakeCoordinator
+    )
+
+    assert await integration_module.async_setup_entry(hass, entry) is True
+    assert FakeCoordinator.instances[0].kwargs["product"] is VENUS_RUNTIME
+
+
+@pytest.mark.asyncio
+async def test_setup_entry_rejects_unknown_persisted_product(monkeypatch) -> None:
+    entry = FakeEntry(product_id="unsupported-product")
+    hass = make_hass(entry)
+    hass._ble_devices[entry.data[CONF_ADDRESS].upper()] = BLEDevice(
+        entry.data[CONF_ADDRESS], "MST_ACCP_TEST"
+    )
+    monkeypatch.setattr(
+        integration_module, "MarstekDataUpdateCoordinator", FakeCoordinator
+    )
+
+    with pytest.raises(ConfigEntryNotReady, match="Unsupported Marstek product"):
+        await integration_module.async_setup_entry(hass, entry)
+    assert FakeCoordinator.instances == []
 
 
 @pytest.mark.asyncio
