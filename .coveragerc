@@ -3,8 +3,6 @@ branch = True
 source =
     custom_components/marstek_ble
     standalone_test
-omit =
-    custom_components/marstek_ble/products/jupiter.py
 
 [report]
 show_missing = True
