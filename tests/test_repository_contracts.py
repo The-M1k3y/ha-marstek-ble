@@ -172,12 +172,10 @@ def test_original_python_sources_compile_without_importing_dependencies() -> Non
         compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
 
-def test_coverage_configuration_only_excludes_unmigrated_jupiter_model() -> None:
+def test_coverage_configuration_has_no_source_omissions() -> None:
     coverage = (ROOT / ".coveragerc").read_text(encoding="utf-8")
 
-    assert "custom_components/marstek_ble/products/jupiter.py" in coverage
-    assert "custom_components/marstek_ble/schema.py" not in coverage
-    assert "custom_components/marstek_ble/entity.py" not in coverage
-    assert "custom_components/marstek_ble/products/*" not in coverage
-    for filename in ORIGINAL_MODULES:
-        assert f"custom_components/marstek_ble/{filename}" not in coverage
+    assert not re.search(r"(?m)^\s*omit\s*=", coverage)
+    assert "custom_components/marstek_ble/" not in coverage.partition("[report]")[0].replace(
+        "custom_components/marstek_ble\n", ""
+    )
