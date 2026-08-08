@@ -1,6 +1,8 @@
-"""Product-specific data, packet, entity, and runtime definitions."""
+"""Enabled product runtime registry and product-specific definitions."""
 
-from .jupiter import JUPITER_PROFILE, JupiterData, JupiterPackets
+# Jupiter remains deliberately outside this runtime registry until its parser and
+# Home Assistant surfaces are migrated. It is still available from
+# ``custom_components.marstek_ble.products.jupiter`` for declarative scaffolding.
 from .venus import VENUS_PROFILE, VenusData, VenusPackets
 from .venus_runtime import VENUS_RUNTIME
 
@@ -34,12 +36,9 @@ def runtime_for_name(local_name: str | None):
 
 
 __all__ = [
-    "JUPITER_PROFILE",
     "RUNTIME_PRODUCTS",
     "VENUS_PROFILE",
     "VENUS_RUNTIME",
-    "JupiterData",
-    "JupiterPackets",
     "VenusData",
     "VenusPackets",
     "runtime_for_id",
