@@ -1,100 +1,97 @@
 ---
 type: Codebase Overview
 title: ha-marstek-ble codebase overview
-description: Purpose, supported discovery patterns, Home Assistant surfaces, and repository layout.
-tags: [home-assistant, bluetooth, integration, architecture, venus]
+description: Purpose, supported discovery patterns, Home Assistant surfaces, product runtime structure, and repository layout.
+tags: [home-assistant, bluetooth, integration, architecture, venus, multi-product]
 status: draft
-source_revision: "59ea1c3f0e6f239cecbae7f9024e0dc48c328d89"
-generated: { by: openai/gpt-5.6-thinking, at: 2026-08-04T09:37:02Z }
+source_revision: "48ab5b3f326ae34430af3a92b7e077c0a1b38772"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-08T11:00:00Z }
 sources:
-  - id: readme
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89/README.md
-    title: Repository README
-  - id: manifest
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89/custom_components/marstek_ble/manifest.json
-    title: Integration manifest
   - id: init
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89/custom_components/marstek_ble/__init__.py
-    title: Integration setup and unload module
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/__init__.py
+    title: Integration setup and product selection
   - id: config-flow
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89/custom_components/marstek_ble/config_flow.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/config_flow.py
     title: Configuration and discovery flow
-  - id: sensors
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89/custom_components/marstek_ble/sensor.py
-    title: Sensor platform
-  - id: binary-sensors
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89/custom_components/marstek_ble/binary_sensor.py
-    title: Binary sensor platform
-  - id: switches
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89/custom_components/marstek_ble/switch.py
-    title: Switch platform
-  - id: selects
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89/custom_components/marstek_ble/select.py
-    title: Select platform
-  - id: buttons
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/59ea1c3f0e6f239cecbae7f9024e0dc48c328d89/custom_components/marstek_ble/button.py
-    title: Button platform
+  - id: runtime
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/product_runtime.py
+    title: Product runtime abstraction
+  - id: coordinator
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/product_coordinator.py
+    title: Product-aware coordinator
+  - id: venus
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/products/venus.py
+    title: Venus product data model
+  - id: venus-runtime
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/products/venus_runtime.py
+    title: Venus runtime behavior
 ---
 
 # Purpose
 
-`ha-marstek-ble` is a Home Assistant custom integration for local Bluetooth Low Energy communication with Marstek Venus E energy-storage units. The repository labels the release beta/experimental and exposes monitoring, control, energy counters, BLE-proxy compatibility, and configurable polling without requiring cloud connectivity.[^readme]
+`ha-marstek-ble` is a Home Assistant custom integration for local Bluetooth Low Energy communication with Marstek energy-storage devices. The currently enabled runtime product is Venus. Multi-product infrastructure exists so additional products can define independent data models, packet parsers, polling schedules, and metadata without inheriting Venus protocol meanings.
 
-The integration domain is `marstek_ble`, its integration type is `device`, and its Home Assistant IoT class is `local_polling`.[^manifest]
+The integration domain is `marstek_ble` and the Home Assistant IoT class is `local_polling`.
 
 # Supported discovery surface
 
-The manifest and config flow accept Bluetooth devices whose local names begin with:
+The currently advertised-name prefixes are Venus prefixes:
 
-| Prefix | Repository description |
-|---|---|
-| `MST_ACCP_` | Venus E hardware v2; described as tested |
-| `MST_VNSE3_` | Venus E hardware v3; described as untested |
+| Prefix       | Repository interpretation |
+|--------------|---------------------------|
+| `MST_ACCP_`  | Venus E hardware v2       |
+| `MST_VNSE3_` | Venus E hardware v3       |
 
-Each configured device receives its own config entry and coordinator. The config flow uses the Bluetooth address as the Home Assistant unique ID while also preventing a second entry with the same advertised name, which is intended to reduce duplicates when a device uses changing addresses.[^config-flow]
+Newly created entries persist `product_id: venus`. The runtime registry is the selection boundary for future products. Existing entries created before product IDs were introduced remain compatible through an explicit legacy Venus fallback.[^config-flow][^init]
+
+Jupiter declarations exist in the repository but Jupiter is not an enabled runtime and is not part of the current discovery surface.
 
 # Home Assistant platforms
 
 `async_setup_entry` forwards one config entry to five platforms: sensor, binary sensor, button, switch, and select.[^init]
 
+The current platform modules remain Venus-specific. They have not yet been converted to dynamically consume `ProductProfile` entity plans. During this staged migration they read temporary flat aliases exposed by the nested `VenusData` object.
+
 | Platform | Main responsibilities |
-|---|---|
-| `sensor.py` | Battery/BMS measurements, power and energy values, capacities, temperatures, 16 cell voltages, identity, networking, and diagnostic values |
+|----------|-----------------------|
+| `sensor.py` | Battery/BMS measurements, power and energy values, capacities, temperatures, 16 cell voltages, identity, networking, and diagnostics |
 | `binary_sensor.py` | Wi-Fi, MQTT, output, external-input, and smart-meter status |
 | `switch.py` | Output, EPS, AC-input, generator, and buzzer commands |
 | `select.py` | Operating mode, charge mode, and CT polling-rate selection |
 | `button.py` | Reboot and fixed power-setting commands |
 
-The setup path always registers the Home Assistant device as manufacturer `Marstek` and model `Venus E`.[^init] Entity `device_info` blocks repeat the same fixed model designation across the platform modules.[^sensors][^binary-sensors][^switches][^selects][^buttons]
+The main device registration now obtains manufacturer and model from the selected product profile. For the only enabled runtime this still resolves to `Marstek` / `Venus E`.[^init]
 
-# Data surfaces
+# Runtime data model
 
-The central `MarstekData` snapshot is projected into entities. Important groups include:
+The live Venus coordinator stores `VenusData`, not the legacy flat `MarstekData`. `VenusData` is divided into nested sections for runtime, battery, system, timer, configuration, device information, and network information.[^venus]
 
-- battery voltage, current, state of charge, state of health, temperature, limits, runtime, errors, warnings, and 16 cell voltages;
-- computed battery power, charging power, discharging power, remaining capacity, and available capacity;
-- output, grid, solar, daily/monthly/total energy, and temperature measurements;
-- device identity, firmware/hardware version, Wi-Fi and network configuration; and
-- operating/configuration diagnostics and connectivity flags.
+`ProductProtocol` validates common frame structure and dispatches payloads through the selected `ProductRuntime`. Fixed-layout Venus responses use declarative packet metadata; Venus-specific text responses use parsers in `products/venus_runtime.py`.[^runtime][^venus-runtime]
 
-Derived battery power uses voltage multiplied by current. Battery state is reported as charging above `+5 W`, discharging below `-5 W`, and inactive between those thresholds.[^sensors]
+Per-field update metadata is recorded with canonical nested paths. Flat attribute and metadata aliases remain temporarily available for the existing entity modules.
+
+# Polling and transport
+
+`ProductDataUpdateCoordinator` reuses the existing coordinator's scheduling, locking, availability, and backoff behavior while replacing product-dependent polling and parsing. The persistent `MarstekBLEDevice` remains the shared BLE transport.[^coordinator]
+
+The Venus runtime owns the current fast and medium polling command sequences. A future product must supply its own runtime instead of using command-number conditionals in the coordinator.
 
 # Repository structure
 
 | Path | Role |
-|---|---|
-| `README.md` | User-facing installation, support, entity, and development overview |
-| `custom_components/marstek_ble/manifest.json` | Home Assistant metadata, Bluetooth matchers, dependencies, and version |
-| `custom_components/marstek_ble/__init__.py` | Config-entry setup, coordinator construction, device registration, platform forwarding, and unload |
-| `custom_components/marstek_ble/config_flow.py` | Bluetooth discovery, manual selection, duplicate prevention, and polling options |
-| `custom_components/marstek_ble/const.py` | Domain, UUIDs, discovery prefixes, intervals, backoff levels, and command identifiers |
-| `custom_components/marstek_ble/coordinator.py` | Poll scheduling, availability handling, command sequencing, notification dispatch, and backoff |
-| `custom_components/marstek_ble/marstek_device.py` | Data model, frame builder, notification parser, payload decoders, BLE client, response waits, and diagnostics history |
-| `custom_components/marstek_ble/sensor.py` | Numeric and text sensors plus stale-data handling |
-| `custom_components/marstek_ble/binary_sensor.py` | Boolean status entities |
-| `custom_components/marstek_ble/switch.py` | Boolean control entities |
-| `custom_components/marstek_ble/select.py` | Enumerated control entities |
-| `custom_components/marstek_ble/button.py` | Stateless command entities |
+|------|------|
+| `custom_components/marstek_ble/__init__.py` | Config-entry setup, runtime selection, device registration, platform forwarding, and unload |
+| `custom_components/marstek_ble/config_flow.py` | Bluetooth discovery, manual selection, duplicate prevention, product-ID persistence, and polling options |
+| `custom_components/marstek_ble/product_runtime.py` | Generic product runtime, poll command, frame parsing, and field metadata support |
+| `custom_components/marstek_ble/product_coordinator.py` | Adapter from generic coordinator behavior to a selected product runtime |
+| `custom_components/marstek_ble/schema.py` | Declarative packet/field/repeated-section parser primitives |
+| `custom_components/marstek_ble/entity.py` | Product profiles, entity metadata, topology planning, and expansion-change records |
+| `custom_components/marstek_ble/products/venus.py` | Canonical Venus nested dataclasses, packet schemas, and entity metadata |
+| `custom_components/marstek_ble/products/venus_runtime.py` | Enabled Venus custom parsers and polling schedules |
+| `custom_components/marstek_ble/products/jupiter.py` | Declarative Jupiter model; not runtime-enabled |
+| `custom_components/marstek_ble/coordinator.py` | Shared inherited scheduling/backoff implementation plus retained legacy Venus poll methods |
+| `custom_components/marstek_ble/marstek_device.py` | Shared BLE client/transport plus retained legacy Venus flat parser/data model |
+| `custom_components/marstek_ble/{sensor,binary_sensor,switch,select,button}.py` | Existing Venus Home Assistant entity/control platforms |
 | `custom_components/marstek_ble/diagnostics.py` | Redacted Home Assistant diagnostics export |
 
 # Configuration
@@ -102,16 +99,13 @@ Derived battery power uses voltage multiplied by current. Battery state is repor
 The options flow exposes two intervals:
 
 - fast polling: `1–60 s`, default `1 s`;
-- medium polling: `5–300 s`, default `60 s`, and never allowed below the fast interval.
+- medium polling: `5–300 s`, default `60 s`, and never below the fast interval.
 
-The medium cadence is represented as an integer number of fast cycles, rounded upward by the coordinator.[^config-flow]
+The medium cadence is represented as an integer number of fast cycles, rounded upward by the inherited coordinator behavior.
 
-[^readme]: Repository README.
-[^manifest]: Integration manifest.
-[^init]: Integration setup and unload module.
+[^init]: Integration setup and product selection.
 [^config-flow]: Configuration and discovery flow.
-[^sensors]: Sensor platform.
-[^binary-sensors]: Binary sensor platform.
-[^switches]: Switch platform.
-[^selects]: Select platform.
-[^buttons]: Button platform.
+[^runtime]: Generic product runtime.
+[^coordinator]: Product-aware coordinator adapter.
+[^venus]: Venus product model.
+[^venus-runtime]: Venus runtime behavior.
