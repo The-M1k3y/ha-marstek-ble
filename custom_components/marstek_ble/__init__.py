@@ -14,6 +14,7 @@ from homeassistant.helpers import device_registry as dr
 from .const import (
     CONF_MEDIUM_POLL_INTERVAL,
     CONF_POLL_INTERVAL,
+    CONF_PRODUCT_ID,
     DEFAULT_MEDIUM_POLL_INTERVAL,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
@@ -21,7 +22,7 @@ from .const import (
 from .product_coordinator import (
     ProductDataUpdateCoordinator as MarstekDataUpdateCoordinator,
 )
-from .products import VENUS_RUNTIME, runtime_for_name
+from .products import VENUS_RUNTIME, runtime_for_id, runtime_for_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,11 +71,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             f"Could not find Marstek device with address {address}"
         )
 
-    product = (
-        runtime_for_name(device_name)
-        or runtime_for_name(getattr(ble_device, "name", None))
-        or VENUS_RUNTIME
-    )
+    configured_product_id = entry.data.get(CONF_PRODUCT_ID)
+    if configured_product_id is not None:
+        product = runtime_for_id(configured_product_id)
+        if product is None:
+            raise ConfigEntryNotReady(
+                f"Unsupported Marstek product profile {configured_product_id!r}"
+            )
+    else:
+        # Entries created before product IDs were persisted are Venus entries.
+        product = (
+            runtime_for_name(device_name)
+            or runtime_for_name(getattr(ble_device, "name", None))
+            or VENUS_RUNTIME
+        )
+
     _LOGGER.debug(
         "Selected product runtime %s for %s",
         product.product_id,
