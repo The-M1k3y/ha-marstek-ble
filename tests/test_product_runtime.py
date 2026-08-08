@@ -204,6 +204,26 @@ def test_venus_custom_text_and_network_parsers_use_nested_sections() -> None:
     assert data.network.meter_ip == "(not set)"
 
 
+def test_venus_text_parsers_preserve_last_alias_in_payload_order() -> None:
+    data = VenusData()
+    protocol = ProductProtocol(VENUS_RUNTIME)
+
+    assert protocol.parse_notification(
+        frame(0x04, b"fw=first,dev_ver=second,fc_ver=third"), data
+    )
+    assert data.device.firmware_version == "third"
+
+    assert protocol.parse_notification(
+        frame(0x24, b"gateway=192.0.2.1,gate=192.0.2.2"), data
+    )
+    assert data.network.gateway == "192.0.2.2"
+
+    assert protocol.parse_notification(
+        frame(0x24, b"gate=192.0.2.3,gateway=192.0.2.4"), data
+    )
+    assert data.network.gateway == "192.0.2.4"
+
+
 def test_custom_parser_packet_minimum_lengths_are_enforced() -> None:
     protocol = ProductProtocol(VENUS_RUNTIME)
     data = VenusData()
