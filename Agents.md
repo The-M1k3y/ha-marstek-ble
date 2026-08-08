@@ -114,10 +114,18 @@ explicitly includes that integration step.
 
 ## Unit-test discipline
 
-- Run the complete isolated unit-test suite before every commit. Run both the
-  passing baseline (`pytest -m "not known_issue"`) and the full coverage run
-  (`pytest --cov --cov-report=term-missing`). Compare the full result with the
-  known-failure baseline and do not introduce unaccounted failures.
+- Run the complete isolated unit-test suite before every commit. Use
+  `pytest -m "not known_issue"` for the passing baseline and
+  `pytest -m "not known_issue" --cov --cov-report=term-missing` for coverage.
+  Do not introduce unaccounted failures.
+- Coverage has no file-level exceptions. Every Python source file under the
+  configured coverage roots (`custom_components/marstek_ble` and
+  `standalone_test`) must remain included in coverage collection; do not add
+  `omit` rules or equivalent source exclusions to hide untested code.
+- Treat missing statement and branch coverage as test-design information, not as
+  a reason to exclude code. Prefer tests that exercise meaningful normal,
+  boundary, failure, lifecycle, and topology paths over assertions written only
+  to increase a percentage.
 - Every newly added function must be accompanied by a dedicated set of tests
   covering its normal behavior, boundary conditions, and relevant failure
   paths.
