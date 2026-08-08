@@ -17,6 +17,7 @@ from custom_components.marstek_ble.config_flow import (
 from custom_components.marstek_ble.const import (
     CONF_MEDIUM_POLL_INTERVAL,
     CONF_POLL_INTERVAL,
+    CONF_PRODUCT_ID,
 )
 
 
@@ -50,6 +51,7 @@ async def test_bluetooth_discovery_shows_confirmation_and_creates_entry() -> Non
         "data": {
             CONF_ADDRESS: "AA:BB:CC:DD:EE:FF",
             CONF_NAME: "MST_ACCP_TEST",
+            CONF_PRODUCT_ID: "venus",
         },
     }
 
@@ -62,6 +64,7 @@ async def test_bluetooth_discovery_uses_address_when_name_missing() -> None:
     result = await config_flow.async_step_bluetooth_confirm({})
     assert result["title"] == info.address
     assert result["data"][CONF_NAME] == info.address
+    assert result["data"][CONF_PRODUCT_ID] == "venus"
 
 
 @pytest.mark.asyncio
@@ -101,6 +104,7 @@ async def test_user_step_filters_configured_non_marstek_and_unnamed_devices() ->
     assert result["data"] == {
         CONF_ADDRESS: "AA:05",
         CONF_NAME: "MST_VNSE3_VALID",
+        CONF_PRODUCT_ID: "venus",
     }
     assert config_flow._raise_on_progress is False
 
