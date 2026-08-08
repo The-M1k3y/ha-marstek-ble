@@ -9,7 +9,9 @@
 - **State model**: The live Venus coordinator now stores nested `VenusData`. Temporary flat read/metadata aliases preserve compatibility with the not-yet-migrated Venus entity platforms.
 - **Product isolation**: Jupiter remains declarative-only and is deliberately excluded from the enabled runtime registry.
 - **Tests**: Added isolated tests for runtime registration, parsing, field metadata, poll dispatch, product selection, compatibility behavior, and failure/boundary cases; updated repository contracts and isolated Home Assistant stubs for the now-imported product metadata.
-- **Coverage**: Removed migrated schema/entity/Venus runtime modules from coverage exclusions; only the unwired Jupiter product model remains excluded.
+- **Declarative coverage tests**: Added direct tests for schema validation and failure paths, entity-plan topology and presence logic, and the declarative Jupiter runtime-summary, detailed-telemetry, event-history, repeated battery-pack, expansion, and derived-entity behavior.
+- **Coverage**: Removed the final Jupiter omission. Coverage now includes every Python source file under `custom_components/marstek_ble` and `standalone_test` with no file-level exceptions.
+- **Testing policy**: Added a dedicated testing-and-coverage OKF concept and updated `Agents.md` to prohibit coverage omissions and to use uncovered statements and branches as test-design input rather than exclusion criteria.
 
 ## 2026-08-05
 
