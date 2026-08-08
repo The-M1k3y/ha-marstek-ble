@@ -12,14 +12,6 @@ from .venus import VENUS_PROFILE, VenusData
 def _parse_device_information(
     payload: bytes, data: VenusData
 ) -> tuple[DataPath, ...]:
-    text = payload.decode("ascii", errors="ignore")
-    values: dict[str, str] = {}
-    for pair in text.split(","):
-        if "=" not in pair:
-            continue
-        key, value = pair.split("=", 1)
-        values[key.strip()] = value.strip()
-
     section = data.device
     updates: list[DataPath] = []
     mapping = {
@@ -28,17 +20,22 @@ def _parse_device_information(
         "sn": "serial_number",
         "mac": "mac_address",
         "hw": "hardware_version",
+        "dev_ver": "firmware_version",
+        "fc_ver": "firmware_version",
+        "fw": "firmware_version",
     }
-    for source_key, attribute in mapping.items():
-        if source_key in values:
-            setattr(section, attribute, values[source_key])
-            updates.append(("device", attribute))
 
-    for source_key in ("dev_ver", "fc_ver", "fw"):
-        if source_key in values:
-            section.firmware_version = values[source_key]
-            if ("device", "firmware_version") not in updates:
-                updates.append(("device", "firmware_version"))
+    for pair in payload.decode("ascii", errors="ignore").split(","):
+        if "=" not in pair:
+            continue
+        key, value = pair.split("=", 1)
+        attribute = mapping.get(key.strip())
+        if attribute is None:
+            continue
+        setattr(section, attribute, value.strip())
+        path = ("device", attribute)
+        if path not in updates:
+            updates.append(path)
 
     return tuple(updates)
 
@@ -61,33 +58,28 @@ def _parse_network_information(
     payload: bytes, data: VenusData
 ) -> tuple[DataPath, ...]:
     text = payload.decode("ascii", errors="ignore").strip()
-    values: dict[str, str] = {}
+    section = data.network
+    section.network_info = text
+    updates: list[DataPath] = [("network", "network_info")]
+    mapping = {
+        "ip": "ip_address",
+        "gate": "gateway",
+        "gateway": "gateway",
+        "mask": "subnet_mask",
+        "dns": "dns_server",
+    }
+
     for pair in text.split(","):
         if ":" not in pair:
             continue
         key, value = pair.split(":", 1)
-        values[key.strip()] = value.strip()
-
-    section = data.network
-    section.network_info = text
-    updates: list[DataPath] = [("network", "network_info")]
-
-    mapping = {
-        "ip": "ip_address",
-        "mask": "subnet_mask",
-        "dns": "dns_server",
-    }
-    for source_key, attribute in mapping.items():
-        if source_key in values:
-            setattr(section, attribute, values[source_key])
-        if getattr(section, attribute) is not None:
-            updates.append(("network", attribute))
-
-    gateway = values.get("gate", values.get("gateway"))
-    if gateway is not None:
-        section.gateway = gateway
-    if section.gateway is not None:
-        updates.append(("network", "gateway"))
+        attribute = mapping.get(key.strip())
+        if attribute is None:
+            continue
+        setattr(section, attribute, value.strip())
+        path = ("network", attribute)
+        if path not in updates:
+            updates.append(path)
 
     return tuple(updates)
 
