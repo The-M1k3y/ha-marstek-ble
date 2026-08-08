@@ -112,11 +112,12 @@ def test_config_flow_abort_reasons_and_steps_have_strings() -> None:
     assert step_ids <= {"user", "bluetooth_confirm", "init"}
 
 
-def test_legacy_modules_only_cross_product_boundary_at_setup() -> None:
-    """Only config-entry setup may select a runtime product during migration."""
+def test_legacy_modules_only_cross_product_boundary_for_selection() -> None:
+    """Only setup and discovery may select runtime products during migration."""
 
+    selection_modules = {"__init__.py", "config_flow.py"}
     forbidden = {"schema", "entity", "products", "product_runtime"}
-    for filename in ORIGINAL_MODULES - {"__init__.py"}:
+    for filename in ORIGINAL_MODULES - selection_modules:
         path = INTEGRATION / filename
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
@@ -133,15 +134,26 @@ def test_legacy_modules_only_cross_product_boundary_at_setup() -> None:
                             f"{path} imports {alias.name}"
                         )
 
+    for filename in selection_modules:
+        tree = ast.parse(
+            (INTEGRATION / filename).read_text(encoding="utf-8")
+        )
+        imported_roots = {
+            (node.module or "").split(".", 1)[0]
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.level
+        }
+        assert "products" in imported_roots
+
     setup_tree = ast.parse(
         (INTEGRATION / "__init__.py").read_text(encoding="utf-8")
     )
-    imported_roots = {
+    setup_imports = {
         (node.module or "").split(".", 1)[0]
         for node in ast.walk(setup_tree)
         if isinstance(node, ast.ImportFrom) and node.level
     }
-    assert {"product_coordinator", "products"} <= imported_roots
+    assert "product_coordinator" in setup_imports
 
 
 def test_original_python_sources_compile_without_importing_dependencies() -> None:
@@ -152,6 +164,7 @@ def test_original_python_sources_compile_without_importing_dependencies() -> Non
             INTEGRATION / "product_coordinator.py",
             INTEGRATION / "products" / "venus_runtime.py",
             ROOT / "standalone_test" / "marstek_basic_info.py",
+            ROOT / "conftest.py",
         ]
     )
 
