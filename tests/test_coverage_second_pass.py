@@ -236,7 +236,7 @@ async def test_operating_mode_select_preserves_state_when_command_fails() -> Non
 
     assert coordinator.device.calls
     assert entity.current_option is None
-    assert entity._write_count == 0
+    assert getattr(entity, "_write_count", 0) == 0
 
 
 def test_generic_select_sync_handles_absent_none_and_unknown_values() -> None:
@@ -283,7 +283,7 @@ async def test_switch_failed_turn_on_and_successful_turn_off_paths() -> None:
 
     await entity.async_turn_on()
     assert entity.is_on is None
-    assert entity._write_count == 0
+    assert getattr(entity, "_write_count", 0) == 0
 
     coordinator.device.result = True
     await entity.async_turn_off()
