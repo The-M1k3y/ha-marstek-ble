@@ -214,12 +214,12 @@ def test_venus_text_parsers_preserve_last_alias_in_payload_order() -> None:
     assert data.device.firmware_version == "third"
 
     assert protocol.parse_notification(
-        frame(0x24, b"gateway=192.0.2.1,gate=192.0.2.2"), data
+        frame(0x24, b"gateway:192.0.2.1,gate:192.0.2.2"), data
     )
     assert data.network.gateway == "192.0.2.2"
 
     assert protocol.parse_notification(
-        frame(0x24, b"gate=192.0.2.3,gateway=192.0.2.4"), data
+        frame(0x24, b"gate:192.0.2.3,gateway:192.0.2.4"), data
     )
     assert data.network.gateway == "192.0.2.4"
 
