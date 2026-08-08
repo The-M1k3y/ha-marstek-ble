@@ -1,4 +1,5 @@
 """The Marstek BLE integration."""
+
 from __future__ import annotations
 
 import logging
@@ -17,7 +18,10 @@ from .const import (
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
 )
-from .coordinator import MarstekDataUpdateCoordinator
+from .product_coordinator import (
+    ProductDataUpdateCoordinator as MarstekDataUpdateCoordinator,
+)
+from .products import VENUS_RUNTIME, runtime_for_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -32,16 +36,18 @@ PLATFORMS: list[Platform] = [
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Marstek BLE from a config entry."""
+
     _LOGGER.debug("Setting up Marstek BLE entry: %s", entry.data)
 
     address: str = entry.data[CONF_ADDRESS]
     device_name: str = entry.data.get(CONF_NAME, entry.title)
-    poll_interval: int = entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
+    poll_interval: int = entry.options.get(
+        CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL
+    )
     medium_poll_interval: int = entry.options.get(
         CONF_MEDIUM_POLL_INTERVAL, DEFAULT_MEDIUM_POLL_INTERVAL
     )
 
-    # Check for duplicate device names in other entries
     for other_entry in hass.config_entries.async_entries(DOMAIN):
         if other_entry.entry_id != entry.entry_id:
             other_name = other_entry.data.get(CONF_NAME, other_entry.title)
@@ -56,7 +62,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     other_address,
                 )
 
-    # Get BLE device
     ble_device = bluetooth.async_ble_device_from_address(
         hass, address.upper(), connectable=True
     )
@@ -65,18 +70,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             f"Could not find Marstek device with address {address}"
         )
 
-    # Create and store coordinator
+    product = (
+        runtime_for_name(device_name)
+        or runtime_for_name(getattr(ble_device, "name", None))
+        or VENUS_RUNTIME
+    )
+    _LOGGER.debug(
+        "Selected product runtime %s for %s",
+        product.product_id,
+        device_name,
+    )
+
     coordinator = entry.runtime_data = MarstekDataUpdateCoordinator(
         hass=hass,
         logger=_LOGGER,
         address=address,
         device=ble_device,
         device_name=device_name,
+        product=product,
         poll_interval=poll_interval,
         medium_poll_interval=medium_poll_interval,
     )
 
-    # Start coordinator and wait for it to be ready
     entry.async_on_unload(coordinator.async_start())
     entry.async_on_unload(entry.add_update_listener(_async_handle_entry_update))
 
@@ -85,19 +100,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             f"Device {address} not advertising, will retry later"
         )
 
-    # Register device
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         connections={(dr.CONNECTION_BLUETOOTH, address)},
         identifiers={(DOMAIN, address)},
         name=device_name,
-        manufacturer="Marstek",
-        model="Venus E",
+        manufacturer=product.profile.device.manufacturer,
+        model=product.profile.device.model,
     )
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
         "coordinator": coordinator,
+        "product_id": product.product_id,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -107,9 +122,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+
     _LOGGER.debug("Unloading Marstek BLE entry: %s", entry.data)
 
-    # Disconnect device to force advertising again for the next reload/setup
     domain_data = hass.data.get(DOMAIN, {}).get(entry.entry_id)
     coordinator: MarstekDataUpdateCoordinator | None = (
         domain_data.get("coordinator") if domain_data else None
@@ -124,7 +139,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 err,
             )
 
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        entry, PLATFORMS
+    )
 
     if unload_ok:
         domain_data = hass.data.get(DOMAIN)
@@ -136,13 +153,18 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def _async_handle_entry_update(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def _async_handle_entry_update(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
     """Handle updates to the config entry options."""
+
     coordinator: MarstekDataUpdateCoordinator | None = entry.runtime_data
     if coordinator is None:
         return
 
-    poll_interval = entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
+    poll_interval = entry.options.get(
+        CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL
+    )
     medium_poll_interval = entry.options.get(
         CONF_MEDIUM_POLL_INTERVAL, DEFAULT_MEDIUM_POLL_INTERVAL
     )
