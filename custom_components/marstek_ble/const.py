@@ -4,6 +4,7 @@ DOMAIN = "marstek_ble"
 
 CONF_POLL_INTERVAL = "poll_interval"
 CONF_MEDIUM_POLL_INTERVAL = "medium_poll_interval"
+CONF_PRODUCT_ID = "product_id"
 
 # BLE Service and Characteristic UUIDs
 SERVICE_UUID = "0000ff00-0000-1000-8000-00805f9b34fb"

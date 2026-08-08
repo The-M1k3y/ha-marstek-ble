@@ -1,5 +1,16 @@
 # Marstek BLE OKF update log
 
+## 2026-08-08
+
+- **Venus runtime migration**: Connected the Venus declarative packet/dataclass model to the live integration through a generic product runtime and product-aware coordinator adapter.
+- **Product selection**: Added explicit runtime registration and persisted `product_id` selection for new config entries; legacy entries without a product ID retain the Venus fallback, while unknown persisted products are rejected.
+- **Polling**: Moved the Venus fast and medium command schedules out of the generic coordinator and into `VENUS_RUNTIME`.
+- **Parsing**: Fixed-layout Venus responses now use declarative field sources; Venus-specific text responses remain product-local custom parsers.
+- **State model**: The live Venus coordinator now stores nested `VenusData`. Temporary flat read/metadata aliases preserve compatibility with the not-yet-migrated Venus entity platforms.
+- **Product isolation**: Jupiter remains declarative-only and is deliberately excluded from the enabled runtime registry.
+- **Tests**: Added isolated tests for runtime registration, parsing, field metadata, poll dispatch, product selection, compatibility behavior, and failure/boundary cases; updated repository contracts and isolated Home Assistant stubs for the now-imported product metadata.
+- **Coverage**: Removed migrated schema/entity/Venus runtime modules from coverage exclusions; only the unwired Jupiter product model remains excluded.
+
 ## 2026-08-05
 
 - **Architecture**: Added branch-only declarative packet, dataclass, entity-description, product-profile, repeated-record, and child-device scaffolding.

@@ -4,9 +4,7 @@ source =
     custom_components/marstek_ble
     standalone_test
 omit =
-    custom_components/marstek_ble/entity.py
-    custom_components/marstek_ble/schema.py
-    custom_components/marstek_ble/products/*
+    custom_components/marstek_ble/products/jupiter.py
 
 [report]
 show_missing = True
