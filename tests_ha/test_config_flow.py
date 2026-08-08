@@ -12,6 +12,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from custom_components.marstek_ble.const import (
     CONF_MEDIUM_POLL_INTERVAL,
     CONF_POLL_INTERVAL,
+    CONF_PRODUCT_ID,
     DOMAIN,
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -55,6 +56,7 @@ async def test_real_flow_manager_discovers_and_creates_an_entry(hass, monkeypatc
     assert result["data"] == {
         CONF_ADDRESS: discovery.address,
         CONF_NAME: discovery.name,
+        CONF_PRODUCT_ID: "venus",
     }
 
 
