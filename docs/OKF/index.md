@@ -4,7 +4,7 @@ okf_version: "0.2"
 
 # Marstek BLE knowledge
 
-This bundle describes the runtime-enabled Venus product model and the still-declarative Jupiter multi-product scaffolding at source revision `48ab5b3f326ae34430af3a92b7e077c0a1b38772`. Read the scope first, then open only the concepts relevant to the task.
+This bundle describes the runtime-enabled Venus product model, the declarative Jupiter multi-product scaffolding, and the repository's isolated testing and complete coverage policy at source revision `f68af61acc7833fab5117e327e2446a1b88e3dd2`. Read the scope first, then open only the concepts relevant to the task.
 
 # Scope
 
@@ -15,6 +15,7 @@ This bundle describes the runtime-enabled Venus product model and the still-decl
 - [Codebase overview](codebase-overview.md) - Integration purpose, Home Assistant surfaces, product runtime structure, and repository layout.
 - [Runtime architecture](architecture.md) - Product selection, polling, BLE lifecycle, runtime parsing, state propagation, and remaining migration boundaries.
 - [Declarative product model](declarative-product-model.md) - Packet schemas, nested dataclasses, runtime adapters, entity plans, repeated records, child devices, and expansion repairs.
+- [Testing and coverage](testing-and-coverage.md) - Isolated test requirements, `known_issue` handling, full source coverage scope, and coverage-driven test design.
 
 # Product protocols
 
