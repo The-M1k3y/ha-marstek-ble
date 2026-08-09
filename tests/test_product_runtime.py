@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from custom_components.marstek_ble.const import DEVICE_PREFIXES
 from custom_components.marstek_ble.product_coordinator import (
     ProductDataUpdateCoordinator,
 )
@@ -16,6 +17,8 @@ from custom_components.marstek_ble.product_runtime import (
     ProductRuntime,
 )
 from custom_components.marstek_ble.products import (
+    JUPITER_RUNTIME,
+    RUNTIME_PRODUCTS,
     VENUS_PROFILE,
     VENUS_RUNTIME,
     VenusData,
@@ -41,14 +44,21 @@ def test_poll_command_normalizes_payload_and_validates_boundaries() -> None:
         PollCommand(0x03, delay=-0.1)
 
 
-def test_runtime_registry_enables_only_venus_and_matches_discovery_names() -> None:
+def test_runtime_registry_supports_all_declared_discovery_prefixes() -> None:
     assert runtime_for_id("venus") is VENUS_RUNTIME
-    assert runtime_for_id("jupiter") is None
+    assert runtime_for_id("jupiter_c_plus") is JUPITER_RUNTIME
+    assert runtime_for_id("unsupported") is None
+
+    for prefix in DEVICE_PREFIXES:
+        runtime = runtime_for_name(f"{prefix}TEST")
+        assert runtime is not None
+        assert runtime in RUNTIME_PRODUCTS
+
     assert runtime_for_name("MST_ACCP_TEST") is VENUS_RUNTIME
     assert runtime_for_name("MST_VNSE3_TEST") is VENUS_RUNTIME
-    assert runtime_for_name("MST_JPLS_TEST") is None
+    assert runtime_for_name("MST_JPLS_TEST") is JUPITER_RUNTIME
     assert runtime_for_name(None) is None
-    assert VENUS_RUNTIME.matches_name("") is False
+    assert all(runtime.matches_name("") is False for runtime in RUNTIME_PRODUCTS)
 
 
 def test_venus_runtime_creates_nested_device_specific_data() -> None:
