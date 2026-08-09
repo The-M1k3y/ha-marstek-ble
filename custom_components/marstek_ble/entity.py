@@ -1,6 +1,7 @@
 """Declarative Home Assistant entity and device planning.
 
-This module only describes entities. Existing platform modules do not use it yet.
+Sensor and binary-sensor platforms consume these bindings at runtime. Product
+profiles remain the source of entity metadata and repeated child-device topology.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ ValueGetter = Callable[[Any], Any]
 
 
 class EntityPlatform(StrEnum):
-    """Platforms represented by this scaffolding."""
+    """Platforms represented by product entity metadata."""
 
     SENSOR = "sensor"
     BINARY_SENSOR = "binary_sensor"
@@ -158,7 +159,7 @@ class EntityBinding:
 
 @dataclass(frozen=True, slots=True)
 class ExpansionChange:
-    """A topology increase that requires a reload or reconfiguration."""
+    """A detected increase in populated repeated product records."""
 
     path: DataPath
     configured_count: int
@@ -169,30 +170,41 @@ class ExpansionChange:
 
 
 @dataclass(frozen=True, slots=True)
+class DevicePlan:
+    """Immutable snapshot of devices generated from current product data."""
+
+    devices: tuple[DeviceBinding, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class EntityPlan:
-    """Frozen startup view of the configured devices and entities."""
+    """Immutable entity/device plan generated from product data."""
 
     devices: tuple[DeviceBinding, ...]
     entities: tuple[EntityBinding, ...]
     repeated_counts: Mapping[str, int]
 
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "repeated_counts", MappingProxyType(dict(self.repeated_counts)))
-
 
 @dataclass(frozen=True, slots=True)
 class ProductProfile:
-    """Single source of truth for one product family."""
+    """Declarative product definition used by parser and entity planning."""
 
     product_id: str
     device: ProductDeviceSpec
     data_type: type[Any]
-    packets: tuple[Any, ...]
+    packets: tuple[Any, ...] = ()
     discovery_prefixes: tuple[str, ...] = ()
     derived_entities: tuple[DerivedEntitySpec, ...] = ()
 
+    def matches_name(self, local_name: str | None) -> bool:
+        """Return whether a Bluetooth local name belongs to this product."""
+
+        if not local_name:
+            return False
+        return any(local_name.startswith(prefix) for prefix in self.discovery_prefixes)
+
     def create_data(self) -> Any:
-        """Create an empty cumulative data object."""
+        """Create a cumulative data object for this product."""
 
         return self.data_type()
 
@@ -200,12 +212,12 @@ class ProductProfile:
         self,
         data: Any,
         *,
-        configured_repeated_counts: Mapping[str, int] | None = None,
+        configured_counts: Mapping[str, int] | None = None,
     ) -> EntityPlan:
-        """Build devices and entities for setup or explicit reconfiguration."""
+        """Build an entity/device plan from current repeated-record counts."""
 
         if not isinstance(data, self.data_type):
-            raise TypeError(f"{self.product_id} expects {self.data_type.__name__}")
+            raise TypeError(f"Expected {self.data_type.__name__}, got {type(data).__name__}")
 
         main = DeviceBinding(
             key="main",
@@ -214,7 +226,7 @@ class ProductProfile:
             model=self.device.model,
             model_id=self.device.model_id,
         )
-        devices = {main.key: main}
+        devices: dict[str, DeviceBinding] = {main.key: main}
         entities: list[EntityBinding] = []
         counts: dict[str, int] = {}
         _collect(
@@ -228,26 +240,26 @@ class ProductProfile:
             devices=devices,
             entities=entities,
             counts=counts,
-            configured_counts=configured_repeated_counts or {},
+            configured_counts=configured_counts or {},
         )
         for spec in self.derived_entities:
             entities.append(
                 EntityBinding(
-                    platform=spec.platform,
-                    description=spec.description,
-                    device=main,
+                    spec.platform,
+                    spec.description,
+                    main,
                     value_fn=spec.value_fn,
                     stale_paths=spec.stale_paths,
                 )
             )
-        return EntityPlan(tuple(devices.values()), tuple(entities), counts)
+        return EntityPlan(tuple(devices.values()), tuple(entities), MappingProxyType(counts))
 
     def detect_expansion_increases(
         self,
         data: Any,
         plan: EntityPlan,
     ) -> tuple[ExpansionChange, ...]:
-        """Compare current repeated counts with the startup plan."""
+        """Compare current repeated counts with a previously generated plan."""
 
         changes: list[ExpansionChange] = []
         _find_increases(data, data, (), plan.repeated_counts, self.product_id, changes)
