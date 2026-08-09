@@ -413,6 +413,7 @@ class SensorDeviceClass:
     ENERGY = "energy"
     ENERGY_STORAGE = "energy_storage"
     DURATION = "duration"
+    FREQUENCY = "frequency"
 
 
 class SensorStateClass:
@@ -604,6 +605,7 @@ aio_core.TimeoutAPIError = TimeoutAPIError
 aio_core.to_human_readable_address = to_human_readable_address
 
 aio_model = _module("aioesphomeapi.model")
+from enum import IntEnum
 
 
 @dataclass
