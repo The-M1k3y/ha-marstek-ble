@@ -41,6 +41,32 @@ async def async_setup_entry(
         MarstekSensor,
     )
 
+    # Preserve the legacy Venus-only presentation sensor until it is represented
+    # directly in the Venus product profile.
+    if coordinator.product.product_id == "venus":
+        async_add_entities(
+            [
+                MarstekTextSensor(
+                    coordinator,
+                    entry,
+                    "battery_state",
+                    "Battery State",
+                    lambda data: (
+                        "charging"
+                        if data.battery_voltage is not None
+                        and data.battery_current is not None
+                        and data.battery_voltage * data.battery_current > 5
+                        else "discharging"
+                        if data.battery_voltage is not None
+                        and data.battery_current is not None
+                        and data.battery_voltage * data.battery_current < -5
+                        else "inactive"
+                    ),
+                    stale_fields=["battery_voltage", "battery_current"],
+                )
+            ]
+        )
+
 
 class MarstekSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Marstek sensor.
