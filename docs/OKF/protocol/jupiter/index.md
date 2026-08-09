@@ -1,31 +1,31 @@
 ---
 type: Protocol Index
 title: Jupiter-C Plus BLE protocol
-description: Progressive entry point for sanitized Jupiter packet schemas, runtime behavior, data modeling, and battery-expansion topology.
+description: Progressive entry point for sanitized Jupiter packet schemas, runtime behavior, live entities, and battery-expansion topology.
 tags: [jupiter, ble, protocol, index]
 status: draft
-source_revision: "382dc8ce426b44fbe59ef23ae50487e62774bcef"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-09T10:20:00Z }
+source_revision: "112abd322722b2e84bcdf34ee4b0325bf14b7313"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-09T10:50:00Z }
 sources:
   - id: sanitized-map
     resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/2cd631c99cf445d0526f450e1f7d5e55f5958178/docs/sources/jupiter-c-plus-ble-field-map.md
     title: Sanitized Jupiter-C Plus BLE field map
   - id: model
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/382dc8ce426b44fbe59ef23ae50487e62774bcef/custom_components/marstek_ble/products/jupiter.py
-    title: Declarative Jupiter product model
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/products/jupiter.py
+    title: Jupiter product model
   - id: runtime
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/382dc8ce426b44fbe59ef23ae50487e62774bcef/custom_components/marstek_ble/products/jupiter_runtime.py
-    title: Enabled Jupiter runtime
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/products/jupiter_runtime.py
+    title: Jupiter runtime
 ---
 
 # Jupiter-C Plus BLE protocol
 
 - [Message schemas](messages/) - Command-level packet documentation.
-- [Battery expansions](battery-expansions.md) - Repeated records, child-device identity, setup-time discovery, and repair signaling.
+- [Battery expansions](battery-expansions.md) - Repeated records, stable child-device identity, live addition, and runtime presence.
 - [Sanitized source map](../../../sources/jupiter-c-plus-ble-field-map.md) - Structural field map without private capture material.
 
-Jupiter-C Plus is runtime-enabled for read-only telemetry and is discovered through the `MST_JPLS_*` advertising-name pattern. Its runtime owns its packet schemas and polling schedule; command numbers shared with Venus do not imply shared layouts or controls.
+Jupiter-C Plus is runtime-enabled for read-only telemetry and discovered through `MST_JPLS_*`. Its runtime owns its packet schemas and polling schedule; shared command numbers do not imply Venus layouts or control semantics.
 
-The live runtime polls `0x03` and `0x14` on the fast cadence and polls `0x0D`, `0x08`, `0x22`, `0x21`, `0x24`, `0x04`, and `0x13` on the medium cadence. It does not poll Jupiter `0x1A` or `0x1C` because the sanitized source contains no observed response structure for those commands.
+The runtime polls `0x03` and `0x14` on the fast cadence and `0x0D`, `0x08`, `0x22`, `0x21`, `0x24`, `0x04`, and `0x13` on the medium cadence. Jupiter `0x1A` and `0x1C` remain unpolled because no response structure is retained in the sanitized source.
 
-The full declarative entity plan is not yet connected to Home Assistant platforms. In particular, per-PV generated entities, battery-pack child devices, and expansion repairs remain modeled but not live. Current Jupiter exposure uses safe overlapping legacy sensor fields, and Venus write/control platforms are disabled for Jupiter.
+The declarative sensor and binary-sensor entity plan is live. This includes the four PV inputs and child devices for populated battery-pack positions. Newly reported battery positions are added without renumbering existing children; disappearing positions become unavailable. Venus write/control platforms remain disabled for Jupiter.
