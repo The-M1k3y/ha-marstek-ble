@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from custom_components.marstek_ble.entity import EntityPlatform
 from custom_components.marstek_ble.product_entity_platform import (
     ProductEntityManager,
@@ -67,6 +69,46 @@ def test_entity_manager_adds_jupiter_battery_children_only_when_present() -> Non
     added = [binding for batch in batches for binding in batch]
     assert {binding.device.key for binding in added} == {"battery_pack_2"}
     assert len(added) == 5
+
+
+def test_entity_manager_does_nothing_until_data_exists() -> None:
+    coordinator = SimpleNamespace(data=None, product=JUPITER_RUNTIME)
+    batches: list[list] = []
+    manager = ProductEntityManager(
+        coordinator,
+        SimpleNamespace(),
+        lambda entities: batches.append(list(entities)),
+        EntityPlatform.SENSOR,
+        _factory,
+    )
+
+    manager.sync()
+    assert batches == []
+
+
+def test_entity_manager_retries_entities_after_add_failure() -> None:
+    data = JUPITER_RUNTIME.create_data()
+    coordinator = SimpleNamespace(data=data, product=JUPITER_RUNTIME)
+    calls = 0
+
+    def failing_add(_entities):
+        nonlocal calls
+        calls += 1
+        raise RuntimeError("add failed")
+
+    manager = ProductEntityManager(
+        coordinator,
+        SimpleNamespace(),
+        failing_add,
+        EntityPlatform.BINARY_SENSOR,
+        _factory,
+    )
+
+    with pytest.raises(RuntimeError, match="add failed"):
+        manager.sync()
+    with pytest.raises(RuntimeError, match="add failed"):
+        manager.sync()
+    assert calls == 2
 
 
 def test_setup_product_entity_platform_subscribes_and_populates_immediately() -> None:
