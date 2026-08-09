@@ -4,7 +4,7 @@ okf_version: "0.2"
 
 # Marstek BLE knowledge
 
-This bundle describes the runtime-enabled Venus product model, the declarative Jupiter multi-product scaffolding, and the repository's isolated testing and complete coverage policy at source revision `f68af61acc7833fab5117e327e2446a1b88e3dd2`. Read the scope first, then open only the concepts relevant to the task.
+This bundle describes the runtime-enabled Venus and Jupiter product models, the declarative multi-product scaffolding, and the repository's isolated testing and complete coverage policy at source revision `382dc8ce426b44fbe59ef23ae50487e62774bcef`. Read the scope first, then open only the concepts relevant to the task.
 
 # Scope
 
@@ -20,7 +20,7 @@ This bundle describes the runtime-enabled Venus product model, the declarative J
 # Product protocols
 
 - [Venus BLE protocol](protocol/venus/) - Runtime-enabled Venus transport, commands, and message schemas.
-- [Jupiter-C Plus BLE protocol](protocol/jupiter/) - Sanitized declarative runtime, detailed telemetry, event history, and expansion topology; not yet integration-runtime enabled.
+- [Jupiter-C Plus BLE protocol](protocol/jupiter/) - Runtime-enabled Jupiter telemetry, detailed packet schemas, event history, and expansion topology.
 
 # Maintenance
 
