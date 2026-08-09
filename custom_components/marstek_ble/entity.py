@@ -170,41 +170,30 @@ class ExpansionChange:
 
 
 @dataclass(frozen=True, slots=True)
-class DevicePlan:
-    """Immutable snapshot of devices generated from current product data."""
-
-    devices: tuple[DeviceBinding, ...]
-
-
-@dataclass(frozen=True, slots=True)
 class EntityPlan:
-    """Immutable entity/device plan generated from product data."""
+    """Frozen view of the currently configured devices and entities."""
 
     devices: tuple[DeviceBinding, ...]
     entities: tuple[EntityBinding, ...]
     repeated_counts: Mapping[str, int]
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "repeated_counts", MappingProxyType(dict(self.repeated_counts)))
+
 
 @dataclass(frozen=True, slots=True)
 class ProductProfile:
-    """Declarative product definition used by parser and entity planning."""
+    """Single source of truth for one product family."""
 
     product_id: str
     device: ProductDeviceSpec
     data_type: type[Any]
-    packets: tuple[Any, ...] = ()
+    packets: tuple[Any, ...]
     discovery_prefixes: tuple[str, ...] = ()
     derived_entities: tuple[DerivedEntitySpec, ...] = ()
 
-    def matches_name(self, local_name: str | None) -> bool:
-        """Return whether a Bluetooth local name belongs to this product."""
-
-        if not local_name:
-            return False
-        return any(local_name.startswith(prefix) for prefix in self.discovery_prefixes)
-
     def create_data(self) -> Any:
-        """Create a cumulative data object for this product."""
+        """Create an empty cumulative data object."""
 
         return self.data_type()
 
@@ -212,12 +201,12 @@ class ProductProfile:
         self,
         data: Any,
         *,
-        configured_counts: Mapping[str, int] | None = None,
+        configured_repeated_counts: Mapping[str, int] | None = None,
     ) -> EntityPlan:
-        """Build an entity/device plan from current repeated-record counts."""
+        """Build devices and entities for setup or explicit reconfiguration."""
 
         if not isinstance(data, self.data_type):
-            raise TypeError(f"Expected {self.data_type.__name__}, got {type(data).__name__}")
+            raise TypeError(f"{self.product_id} expects {self.data_type.__name__}")
 
         main = DeviceBinding(
             key="main",
@@ -226,7 +215,7 @@ class ProductProfile:
             model=self.device.model,
             model_id=self.device.model_id,
         )
-        devices: dict[str, DeviceBinding] = {main.key: main}
+        devices = {main.key: main}
         entities: list[EntityBinding] = []
         counts: dict[str, int] = {}
         _collect(
@@ -240,19 +229,19 @@ class ProductProfile:
             devices=devices,
             entities=entities,
             counts=counts,
-            configured_counts=configured_counts or {},
+            configured_counts=configured_repeated_counts or {},
         )
         for spec in self.derived_entities:
             entities.append(
                 EntityBinding(
-                    spec.platform,
-                    spec.description,
-                    main,
+                    platform=spec.platform,
+                    description=spec.description,
+                    device=main,
                     value_fn=spec.value_fn,
                     stale_paths=spec.stale_paths,
                 )
             )
-        return EntityPlan(tuple(devices.values()), tuple(entities), MappingProxyType(counts))
+        return EntityPlan(tuple(devices.values()), tuple(entities), counts)
 
     def detect_expansion_increases(
         self,
