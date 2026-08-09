@@ -9,7 +9,7 @@
 - **Battery topology**: Populated base/expansion battery records create stable positional child devices. New positions are added on later count increases; positions that disappear become unavailable without renumbering existing children.
 - **Controls**: Jupiter remains read-only. Venus button, switch, and select command semantics are not exposed for Jupiter.
 - **Compatibility**: Retained tracked Jupiter compatibility aliases and legacy entity constructors for transition/regression callers; canonical product bindings are now the live sensor path.
-- **Tests**: Added Jupiter runtime, dynamic entity-manager, and live declarative entity tests in new test files only. One pre-existing runtime-registry test still asserts the former invariant that `MST_JPLS_*` is unsupported and conflicts with this feature; it was intentionally not modified because existing tests were out of scope for this change.
+- **Tests**: Added Jupiter runtime, dynamic entity-manager, and live declarative entity tests. Updated the existing runtime-registry test to verify that every declared discovery prefix resolves to an enabled runtime, including Jupiter-C Plus.
 
 ## 2026-08-08
 
