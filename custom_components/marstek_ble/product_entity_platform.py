@@ -41,16 +41,18 @@ class ProductEntityManager:
 
         plan = self.coordinator.product.profile.build_entity_plan(data)
         new_entities = []
+        new_keys = []
         for binding in plan.entities:
             if binding.platform is not self.platform:
                 continue
             if binding.unique_key in self._known_keys:
                 continue
-            self._known_keys.add(binding.unique_key)
             new_entities.append(self._factory(self.coordinator, self.entry, binding))
+            new_keys.append(binding.unique_key)
 
         if new_entities:
             self._async_add_entities(new_entities)
+            self._known_keys.update(new_keys)
 
 
 def setup_product_entity_platform(
