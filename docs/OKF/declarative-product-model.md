@@ -4,34 +4,34 @@ title: Declarative product, parsing, and entity model
 description: Product-specific packet schemas, cumulative dataclasses, runtime parsing, generated Home Assistant entity metadata, repeated records, and expansion topology.
 tags: [architecture, dataclass, parsing, entities, products, expansions]
 status: draft
-source_revision: "48ab5b3f326ae34430af3a92b7e077c0a1b38772"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-08T11:00:00Z }
+source_revision: "382dc8ce426b44fbe59ef23ae50487e62774bcef"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-09T10:20:00Z }
 sources:
   - id: schema
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/schema.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/382dc8ce426b44fbe59ef23ae50487e62774bcef/custom_components/marstek_ble/schema.py
     title: Declarative packet and dataclass parsing primitives
   - id: entities
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/entity.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/382dc8ce426b44fbe59ef23ae50487e62774bcef/custom_components/marstek_ble/entity.py
     title: Entity metadata and topology planning
   - id: runtime
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/product_runtime.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/382dc8ce426b44fbe59ef23ae50487e62774bcef/custom_components/marstek_ble/product_runtime.py
     title: Generic runtime adapter
-  - id: venus
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/products/venus.py
-    title: Venus product model
   - id: venus-runtime
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/products/venus_runtime.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/382dc8ce426b44fbe59ef23ae50487e62774bcef/custom_components/marstek_ble/products/venus_runtime.py
     title: Enabled Venus runtime
   - id: jupiter
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/products/jupiter.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/382dc8ce426b44fbe59ef23ae50487e62774bcef/custom_components/marstek_ble/products/jupiter.py
     title: Jupiter declarative model
+  - id: jupiter-runtime
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/382dc8ce426b44fbe59ef23ae50487e62774bcef/custom_components/marstek_ble/products/jupiter_runtime.py
+    title: Enabled Jupiter runtime adapter
 ---
 
 # Status
 
-The declarative model is now partially live. Venus uses the product-specific dataclasses, packet schemas, generic runtime parser, and product-owned polling schedule in the integration runtime. Jupiter remains declarative-only and is intentionally not registered as an enabled runtime.
+The declarative parsing model is live for both Venus and Jupiter-C Plus. Both products use product-specific dataclasses, packet schemas, the generic runtime parser, and product-owned polling schedules.
 
-The entity-planning layer is still scaffolding: the existing Home Assistant entity modules have not yet been replaced by generated `ProductProfile` entity plans.
+The entity-planning layer remains scaffolding: the existing Home Assistant sensor and binary-sensor modules have not yet been replaced by generated `ProductProfile` entity plans. Jupiter therefore uses a temporary read-only compatibility adapter for the overlapping legacy sensor surface. Venus write/control platforms are not loaded for Jupiter.
 
 # Single source of truth
 
@@ -45,7 +45,7 @@ A field may define one `FieldSource` per packet. Every source normalizes its raw
 
 Direct entity metadata is attached to the same dataclass field as its packet sources. Derived entities remain profile metadata because they depend on multiple fields and should not be cached as mutable state.
 
-# Runtime adapter
+# Runtime adapters
 
 `ProductRuntime` binds one `ProductProfile` to runtime behavior that cannot be represented by fixed binary field metadata alone:
 
@@ -53,9 +53,9 @@ Direct entity metadata is attached to the same dataclass field as its packet sou
 - medium polling commands; and
 - optional command-specific payload parsers for text or otherwise irregular responses.
 
-`ProductProtocol` owns the common Marstek frame validation and dispatches the payload only to the selected runtime. Runtime products are registered explicitly, which prevents an unimplemented product from accidentally inheriting Venus command meanings.
+`ProductProtocol` owns common Marstek frame validation and dispatches the payload only to the selected runtime. Runtime products are registered explicitly, preventing one product from accidentally inheriting another product's command meanings.
 
-`PollCommand` carries a command byte, optional payload, and response-window delay. Poll schedules are therefore data owned by the product runtime rather than hard-coded coordinator branches.
+Venus and Jupiter each define independent polling schedules. Jupiter deliberately omits commands with no observed response structure in the sanitized product source, even when Venus uses those command numbers.
 
 # Parsing
 
@@ -68,15 +68,24 @@ battery.packs.1.highest_cell_voltage
 pv_inputs.3.power
 ```
 
-The enabled Venus runtime uses these paths for source timestamp/staleness metadata. It also exposes temporary flat metadata aliases required by the existing entity implementation.
+Both enabled runtimes use canonical paths for update metadata. Venus exposes temporary flat aliases required by the existing entity implementation. `RuntimeJupiterData` now does the same only for legacy fields that have a safe Jupiter equivalent; incompatible Venus-only fields remain unavailable.
 
-# Venus migration state
+# Jupiter runtime state
 
-`VenusData` is the canonical live coordinator snapshot. It contains nested runtime, battery, system, timer, configuration, device-information, and network sections.
+The canonical declarative Jupiter model contains:
 
-Fixed-layout responses are parsed from the dataclass field metadata. Venus-specific text responses remain in `products/venus_runtime.py`, including device information, Wi-Fi SSID, meter IP, network information, and local API status.
+- runtime summary values;
+- energy counters;
+- inverter and grid telemetry;
+- MPPT telemetry;
+- four PV-input records;
+- aggregate BMS telemetry;
+- four fixed battery-pack summary slots;
+- twenty event-history records;
+- device identity; and
+- unresolved one-byte status responses.
 
-The existing entity/control modules still expect flat attributes. `VenusData` therefore provides temporary read-only flat aliases such as `battery_soc` and `wifi_connected`. New runtime code should use the nested canonical paths instead; the compatibility aliases are intended to disappear after the entity platforms migrate.
+The runtime adapter additionally parses comma-separated `0x04` device information and the variable-length `0x08` Wi-Fi SSID payload. It tracks per-field update metadata and provides temporary compatibility reads for the current Home Assistant sensor modules.
 
 # Entity planning
 
@@ -91,7 +100,7 @@ The existing entity/control modules still expect flat attributes. `VenusData` th
 
 Indexed scalar expansion creates several entities from one sequence on the same device, such as Venus cell voltages. Repeated nested dataclasses represent records containing several values, such as Jupiter battery summaries.
 
-This entity plan is not yet used by the live Home Assistant platform modules.
+This entity plan is still not used by the live Home Assistant platform modules.
 
 # Child devices and expansion discovery
 
@@ -99,4 +108,4 @@ A repeated section may define `RepeatedChildDeviceSpec`. The startup plan then c
 
 The plan snapshots the count during setup or explicit reconfiguration. Existing bindings include a runtime presence predicate, so a later decrease can make a child unavailable without shifting identities.
 
-`detect_expansion_increases()` compares later telemetry with the startup plan and returns `ExpansionChange` records. A future integration adapter can convert these into Home Assistant repairs requesting a reload or reconfiguration. Jupiter runtime parsing, child-device creation, and repairs remain unwired.
+`detect_expansion_increases()` compares later telemetry with the startup plan and returns `ExpansionChange` records. The live Jupiter parser now populates the underlying pack-count and repeated-record data, but child-device creation and Home Assistant repair signaling remain unwired until the entity-platform migration.
