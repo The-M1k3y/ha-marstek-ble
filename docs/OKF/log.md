@@ -1,5 +1,15 @@
 # Marstek BLE OKF update log
 
+## 2026-08-09
+
+- **Jupiter runtime**: Enabled Jupiter-C Plus as the `jupiter_c_plus` runtime product and added `MST_JPLS_*` Bluetooth discovery.
+- **Polling**: Added Jupiter-owned fast polling for `0x03`/`0x14` and medium polling for the observed `0x0D`, `0x08`, `0x22`, `0x21`, `0x24`, `0x04`, and `0x13` responses. Jupiter `0x1A` and `0x1C` remain unpolled because no response structure is retained in the sanitized source.
+- **Parsing**: Connected the existing declarative Jupiter binary schemas to the live product protocol and added product-local parsers for `0x04` device information and `0x08` Wi-Fi SSID.
+- **Compatibility**: Added tracked Jupiter runtime data and temporary flat read/metadata aliases only where the current legacy sensor surface has a safe Jupiter equivalent; unsupported Venus-only values remain unavailable.
+- **Controls**: Limited Jupiter to sensor and binary-sensor platforms. Venus button, switch, and select command semantics are not exposed for Jupiter.
+- **Tests**: Added a new Jupiter-only runtime test module without modifying existing tests. One pre-existing runtime-registry test still asserts the former invariant that `MST_JPLS_*` is unsupported and therefore conflicts with this feature by design.
+- **Entity migration boundary**: The declarative per-PV entities, battery-pack child devices, and expansion repair adapter remain modeled but are not yet wired into Home Assistant platform setup.
+
 ## 2026-08-08
 
 - **Venus runtime migration**: Connected the Venus declarative packet/dataclass model to the live integration through a generic product runtime and product-aware coordinator adapter.
