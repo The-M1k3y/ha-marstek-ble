@@ -6,6 +6,7 @@ import struct
 
 from homeassistant.helpers.entity import EntityCategory
 
+from custom_components.marstek_ble.entity import EntityPlatform
 from custom_components.marstek_ble.products.jupiter import (
     JUPITER_PROFILE,
     JupiterData,
@@ -69,6 +70,58 @@ def test_unverified_jupiter_fields_are_diagnostic_entities() -> None:
         entities[key].description.entity_category is EntityCategory.DIAGNOSTIC
         for key in expected_diagnostics
     )
+
+
+def test_interpreted_status_bits_are_binary_entities() -> None:
+    data = JupiterData()
+    runtime_payload = bytearray(74)
+    runtime_payload[0x3C] = 0b00000010
+    detail_payload = bytearray(166)
+    detail_payload[0x20:0x22] = struct.pack("<H", 0b11110100)
+
+    parse_into(runtime_payload, JupiterPackets.RUNTIME_INFORMATION, data)
+    parse_into(detail_payload, JupiterPackets.DETAILED_TELEMETRY, data)
+
+    assert data.runtime.surplus_feed_in_active is True
+    assert data.mppt.controller_ready is True
+    assert data.mppt.pv_input_1_active is True
+    assert data.mppt.pv_input_2_active is True
+    assert data.mppt.pv_input_3_active is True
+    assert data.mppt.pv_input_4_active is True
+
+    plan = JUPITER_PROFILE.build_entity_plan(data)
+    entities = {entity.unique_key: entity for entity in plan.entities}
+    expected = {
+        "surplus_feed_in_active": "Surplus Feed-In Active Unverified",
+        "mppt_controller_ready": "MPPT Controller Ready Unverified",
+        "pv_input_1_active": "PV Input 1 Active",
+        "pv_input_2_active": "PV Input 2 Active",
+        "pv_input_3_active": "PV Input 3 Active",
+        "pv_input_4_active": "PV Input 4 Active",
+    }
+
+    for key, name in expected.items():
+        entity = entities[key]
+        assert entity.platform is EntityPlatform.BINARY_SENSOR
+        assert entity.description.name == name
+        assert entity.value_from(data) is True
+
+
+def test_interpreted_status_bits_clear_independently() -> None:
+    data = JupiterData()
+    runtime_payload = bytearray(74)
+    detail_payload = bytearray(166)
+    detail_payload[0x20:0x22] = struct.pack("<H", 0b01010000)
+
+    parse_into(runtime_payload, JupiterPackets.RUNTIME_INFORMATION, data)
+    parse_into(detail_payload, JupiterPackets.DETAILED_TELEMETRY, data)
+
+    assert data.runtime.surplus_feed_in_active is False
+    assert data.mppt.controller_ready is False
+    assert data.mppt.pv_input_1_active is True
+    assert data.mppt.pv_input_2_active is False
+    assert data.mppt.pv_input_3_active is True
+    assert data.mppt.pv_input_4_active is False
 
 
 def test_event_history_is_exposed_as_one_text_sensor_per_record() -> None:
