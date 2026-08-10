@@ -44,7 +44,7 @@ little-endian unless stated otherwise.
 | `0x09` |      2 | `u16 LE`      | PV input 4 power          | W                                    | Confirmed  |
 | `0x0B` |      1 | `u8 / bool`   | PV input 4 connected      | boolean                              | Confirmed  |
 | `0x0C` |      2 | `u16 LE`      | AC/grid output power      | W                                    | Confirmed  |
-| `0x0E` |      1 | `u8 / bool`   | AC/grid output active     | boolean                              | Confirmed  |
+| `0x0E` |      1 | `u8 / bool`   | Grid connection valid     | boolean                              | Confirmed  |
 | `0x0F` |      3 | unknown       | unknown                   | —                                    | —          |
 | `0x12` |      1 | `u8 state`    | Battery state             | 0 idle, 1 charging, 2 discharging    | Confirmed  |
 | `0x13` |      2 | `u16 LE`      | Stored battery energy     | 10 Wh                                | Confirmed  |
@@ -53,7 +53,8 @@ little-endian unless stated otherwise.
 | `0x17` |      4 | `u32 LE`      | Daily PV generation       | 0.01 kWh                             | Strong     |
 | `0x1B` |      4 | `u32 LE`      | Monthly PV generation     | 0.01 kWh                             | Strong     |
 | `0x1F` |      4 | `u32 LE`      | Total PV generation       | 0.01 kWh                             | Confirmed  |
-| `0x23` |      4 | unknown       | unknown                   | —                                    | —          |
+| `0x23` |      2 | `u16 LE`      | Inverter error code       | raw                                  | Confirmed  |
+| `0x25` |      2 | unknown       | unknown                   | —                                    | —          |
 | `0x27` |      4 | `u32 LE`      | Daily discharge energy    | 0.01 kWh                             | Confirmed  |
 | `0x2B` |      4 | `u32 LE`      | Monthly discharge energy  | 0.01 kWh                             | Confirmed  |
 | `0x2F` |      2 | `u16 LE`      | EMS firmware version      | raw version                          | Confirmed  |
@@ -67,6 +68,19 @@ little-endian unless stated otherwise.
 Controlled observations distinguish raw battery-state values `0`, `1`, and `2`
 as idle, charging, and discharging respectively. Other raw values remain
 unresolved.
+
+The grid-connection flag at `0x0E` remains set when the target output is zero and
+clears when the AC/grid connection is physically removed. On reconnection, grid
+voltage and frequency can be measurable before the flag returns, so it represents
+a validated/qualified grid connection rather than mere voltage presence or
+non-zero AC output.
+
+The inverter error at `0x23` mirrors the detailed inverter error at command
+`0x14` offset `0x02`. During a controlled AC disconnect, `0x040A` appeared
+transiently before the persistent `0x0426`. Based on common grid-tie inverter
+behaviour, `0x040A` is tentatively associated with **overfrequency** and `0x0426`
+with **island / anti-islanding detection**. Those semantic names remain
+Tentative; the numeric field mapping is Confirmed.
 
 ## `0x04` device information
 
@@ -97,25 +111,28 @@ layout has not been validated for Jupiter.
 
 The packet contains exactly 20 fixed records of 8 bytes each.
 
-| Relative offset | Length | Type     | Field               | Confidence |
-| --------------: | -----: | -------- | ------------------- | ---------- |
-|         `+0x00` |      2 | `u16 LE` | Year                | Strong     |
-|         `+0x02` |      1 | `u8`     | Month               | Strong     |
-|         `+0x03` |      1 | `u8`     | Day                 | Strong     |
-|         `+0x04` |      1 | `u8`     | Hour                | Strong     |
-|         `+0x05` |      1 | `u8`     | Minute              | Strong     |
-|         `+0x06` |      1 | `u8`     | Event value or ID   | Tentative  |
-|         `+0x07` |      1 | `u8`     | Event type or state | Tentative  |
+| Relative offset | Length | Type     | Field          | Confidence |
+| --------------: | -----: | -------- | -------------- | ---------- |
+|         `+0x00` |      2 | `u16 LE` | Year           | Strong     |
+|         `+0x02` |      1 | `u8`     | Month          | Strong     |
+|         `+0x03` |      1 | `u8`     | Day            | Strong     |
+|         `+0x04` |      1 | `u8`     | Hour           | Strong     |
+|         `+0x05` |      1 | `u8`     | Minute         | Strong     |
+|         `+0x06` |      2 | `u16 LE` | Event/error ID | Confirmed  |
 
-The records form a circular history buffer. Event-value semantics are not stable
-enough for named Home Assistant events or entities.
+The records form a circular history buffer. A controlled AC disconnect produced
+a persistent inverter error whose 16-bit value was written unchanged into the
+final two bytes of a new event record. This confirms that the bytes previously
+modeled separately as an event value and event state are one little-endian
+16-bit event/error identifier. Individual code meanings remain unresolved except
+for tentative correlations explicitly documented above.
 
 ## `0x14` detailed telemetry
 
 | Offset | Length | Type           | Name                                     | Unit / scale | Confidence |
 | -----: | -----: | -------------- | ---------------------------------------- | ------------ | ---------- |
 | `0x00` |      2 | `u16 bitfield` | Inverter operating-state flags           | raw          | Strong     |
-| `0x02` |      2 | `u16 LE`       | Inverter error code                      | raw          | Strong     |
+| `0x02` |      2 | `u16 LE`       | Inverter error code                      | raw          | Confirmed  |
 | `0x04` |      2 | `u16 LE`       | Inverter warning code                    | raw          | Strong     |
 | `0x06` |      2 | `u16 LE`       | Grid voltage                             | 0.1 V        | Strong     |
 | `0x08` |      2 | `u16 LE`       | Unresolved inverter field                | raw          | Tentative  |
@@ -182,6 +199,11 @@ observations showed that it remained zero while the device had non-zero grid
 voltage and AC output power, so its semantics and scale are now unresolved. The
 integration does not expose it as a Home Assistant grid-current entity pending
 further validation.
+
+Controlled grid removal also shows that inverter state flags at `0x00` describe
+more than grid-voltage presence: they clear when the grid is removed and can
+remain clear after voltage/frequency measurements return while the grid
+connection has not yet become valid. The individual flag bits remain unresolved.
 
 `*` MPPT bits 4–7 identify active PV inputs 1–4. Bit 2 is strongly
 supported as an initialized/ready state. Other bits remain unresolved.
