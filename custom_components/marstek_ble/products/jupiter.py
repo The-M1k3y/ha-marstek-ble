@@ -33,6 +33,14 @@ def _battery_state(value: int) -> str:
     return _BATTERY_STATES.get(value, "unknown")
 
 
+def _event_summary(values: tuple[int, int, int, int, int, int, int]) -> str:
+    year, month, day, hour, minute, unknown_1, unknown_2 = values
+    return (
+        f"{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}"
+        f" | 0x{unknown_1:02X} 0x{unknown_2:02X}"
+    )
+
+
 class JupiterPackets:
     """Observed Jupiter-C Plus response schemas."""
 
@@ -188,13 +196,14 @@ class JupiterBatteryData:
 class JupiterEventRecord:
     """One event-history record; event semantics remain unresolved."""
 
-    year: int | None = source_field(sources={_EVENTS: FieldSource(0x00, "<H")}, entities=_sensor("year", "Year", entity_category=_DIAGNOSTIC))
-    month: int | None = source_field(sources={_EVENTS: FieldSource(0x02, "<B")}, entities=_sensor("month", "Month", entity_category=_DIAGNOSTIC))
-    day: int | None = source_field(sources={_EVENTS: FieldSource(0x03, "<B")}, entities=_sensor("day", "Day", entity_category=_DIAGNOSTIC))
-    hour: int | None = source_field(sources={_EVENTS: FieldSource(0x04, "<B")}, entities=_sensor("hour", "Hour", entity_category=_DIAGNOSTIC))
-    minute: int | None = source_field(sources={_EVENTS: FieldSource(0x05, "<B")}, entities=_sensor("minute", "Minute", entity_category=_DIAGNOSTIC))
-    event_value: int | None = source_field(sources={_EVENTS: FieldSource(0x06, "<B")}, entities=_sensor("event_value", "Event Value or ID", entity_category=_DIAGNOSTIC))
-    event_state: int | None = source_field(sources={_EVENTS: FieldSource(0x07, "<B")}, entities=_sensor("event_state", "Event Type or State", entity_category=_DIAGNOSTIC))
+    summary: str | None = source_field(sources={_EVENTS: FieldSource(0x00, "<HBBBBBB", _event_summary)}, entities=_sensor("summary", "Record", entity_category=_DIAGNOSTIC))
+    year: int | None = source_field(sources={_EVENTS: FieldSource(0x00, "<H")})
+    month: int | None = source_field(sources={_EVENTS: FieldSource(0x02, "<B")})
+    day: int | None = source_field(sources={_EVENTS: FieldSource(0x03, "<B")})
+    hour: int | None = source_field(sources={_EVENTS: FieldSource(0x04, "<B")})
+    minute: int | None = source_field(sources={_EVENTS: FieldSource(0x05, "<B")})
+    event_value: int | None = source_field(sources={_EVENTS: FieldSource(0x06, "<B")})
+    event_state: int | None = source_field(sources={_EVENTS: FieldSource(0x07, "<B")})
 
 
 @dataclass(slots=True)
