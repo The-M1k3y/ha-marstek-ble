@@ -57,6 +57,7 @@ def test_jupiter_runtime_summary_parses_pv_power_and_system_values() -> None:
     payload[23:27] = struct.pack("<I", 1234)
     payload[27:31] = struct.pack("<I", 5678)
     payload[31:35] = struct.pack("<I", 9012)
+    payload[35:37] = struct.pack("<H", 0x0426)
     payload[39:43] = struct.pack("<I", 345)
     payload[43:47] = struct.pack("<I", 678)
     payload[47:49] = struct.pack("<H", 101)
@@ -73,7 +74,9 @@ def test_jupiter_runtime_summary_parses_pv_power_and_system_values() -> None:
     assert data.pv_inputs[2].connected is False
     assert data.pv_inputs[3].power == 456.0
     assert data.runtime.ac_output_power == 640.0
+    assert data.runtime.grid_connection_valid is True
     assert data.runtime.ac_output_active is True
+    assert data.inverter.error_code == 0x0426
     assert data.runtime.battery_charging_active is True
     assert data.runtime.stored_battery_energy == 2500.0
     assert data.runtime.battery_soc == 73.0
@@ -210,18 +213,19 @@ def test_jupiter_event_history_is_twenty_fixed_records() -> None:
     data = JUPITER_RUNTIME.create_data()
     payload = bytearray(160)
     payload[0:2] = struct.pack("<H", 2026)
-    payload[2:8] = bytes((8, 9, 12, 34, 5, 1))
+    payload[2:8] = bytes((8, 9, 12, 34, 0x26, 0x04))
     payload[8:10] = struct.pack("<H", 2025)
-    payload[10:16] = bytes((12, 31, 23, 59, 9, 0))
+    payload[10:16] = bytes((12, 31, 23, 59, 0x21, 0x05))
 
     assert JUPITER_RUNTIME.parse_payload(0x13, bytes(payload), data)
     assert len(data.events) == 20
     assert data.events[0].year == 2026
     assert data.events[0].month == 8
-    assert data.events[0].event_value == 5
-    assert data.events[0].event_state == 1
+    assert data.events[0].event_code == 0x0426
+    assert data.events[0].event_value == 0x26
+    assert data.events[0].event_state == 0x04
     assert data.events[1].year == 2025
-    assert data.events[1].event_value == 9
+    assert data.events[1].event_code == 0x0521
 
 
 def test_jupiter_runtime_summary_decodes_battery_state_values() -> None:
@@ -260,5 +264,7 @@ def test_jupiter_entity_plan_uses_verified_state_and_display_metadata() -> None:
     assert "grid_current" not in sensors
     assert sensors["grid_frequency"].description.suggested_display_precision == 2
     assert sensors["mac_address"].description.name == "Bluetooth MAC Address"
+    assert binary_sensors["grid_connection_valid"].description.name == "Grid Connection Valid"
+    assert "ac_output_active" not in binary_sensors
     assert "battery_charging_active" not in binary_sensors
     assert "battery_charging" not in binary_sensors
