@@ -15,7 +15,7 @@ from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent, UnitOfElectri
 from homeassistant.helpers.entity import EntityCategory
 
 from ..entity import ProductDeviceSpec, ProductProfile, RepeatedChildDeviceSpec, binary_sensor_entity, derived_sensor, sensor_entity
-from ..schema import FieldSource, PacketSchema, RepeatedSectionSource, divide_by, multiply_by, nonzero, repeated_section_field, section_field, source_field, value_field
+from ..schema import FieldSource, PacketSchema, RepeatedSectionSource, bit, divide_by, multiply_by, nonzero, repeated_section_field, section_field, source_field, value_field
 
 _DIAGNOSTIC = EntityCategory.DIAGNOSTIC
 _BATTERY_STATES = {0: "idle", 1: "charging", 2: "discharging"}
@@ -92,6 +92,7 @@ class JupiterRuntimeData:
     stored_battery_energy: float | None = source_field(sources={_RUNTIME: FieldSource(0x13, "<H", multiply_by(10)), _DETAIL: FieldSource(0x78, "<H", float)}, entities=_sensor("stored_battery_energy", "Stored Battery Energy", native_unit_of_measurement=UnitOfEnergy.WATT_HOUR, device_class=SensorDeviceClass.ENERGY_STORAGE, state_class=SensorStateClass.MEASUREMENT))
     battery_soc: float | None = source_field(sources={_RUNTIME: FieldSource(0x15, "<B", float), _DETAIL: FieldSource(0x5E, "<H", float)}, entities=_sensor("battery_soc", "Battery SOC", native_unit_of_measurement=PERCENTAGE, device_class=SensorDeviceClass.BATTERY, state_class=SensorStateClass.MEASUREMENT))
     operational_status: int | None = source_field(sources={_RUNTIME: FieldSource(0x3C, "<B")}, entities=_sensor("operational_status", "Operational Status", entity_category=_DIAGNOSTIC))
+    surplus_feed_in_active: bool | None = source_field(sources={_RUNTIME: FieldSource(0x3C, "<B", bit(1))}, entities=_binary("surplus_feed_in_active", "Surplus Feed-In Active Unverified"))
     ems_firmware_version: int | None = source_field(sources={_RUNTIME: FieldSource(0x2F, "<H")}, entities=_sensor("ems_firmware_version", "EMS Firmware Version", entity_category=_DIAGNOSTIC))
     inverter_firmware_version: int | None = source_field(sources={_RUNTIME: FieldSource(0x31, "<H")}, entities=_sensor("inverter_firmware_version", "Inverter Firmware Version", entity_category=_DIAGNOSTIC))
     mppt_firmware_version: int | None = source_field(sources={_RUNTIME: FieldSource(0x33, "<H")}, entities=_sensor("mppt_firmware_version", "MPPT Firmware Version", entity_category=_DIAGNOSTIC))
@@ -136,6 +137,11 @@ class JupiterMpptData:
     """MPPT controller and DC-output telemetry."""
 
     state_flags: int | None = source_field(sources={_DETAIL: FieldSource(0x20, "<H")}, entities=_sensor("mppt_state_flags", "MPPT State Flags", entity_category=_DIAGNOSTIC))
+    controller_ready: bool | None = source_field(sources={_DETAIL: FieldSource(0x20, "<H", bit(2))}, entities=_binary("mppt_controller_ready", "MPPT Controller Ready Unverified"))
+    pv_input_1_active: bool | None = source_field(sources={_DETAIL: FieldSource(0x20, "<H", bit(4))}, entities=_binary("pv_input_1_active", "PV Input 1 Active"))
+    pv_input_2_active: bool | None = source_field(sources={_DETAIL: FieldSource(0x20, "<H", bit(5))}, entities=_binary("pv_input_2_active", "PV Input 2 Active"))
+    pv_input_3_active: bool | None = source_field(sources={_DETAIL: FieldSource(0x20, "<H", bit(6))}, entities=_binary("pv_input_3_active", "PV Input 3 Active"))
+    pv_input_4_active: bool | None = source_field(sources={_DETAIL: FieldSource(0x20, "<H", bit(7))}, entities=_binary("pv_input_4_active", "PV Input 4 Active"))
     error_code: int | None = source_field(sources={_DETAIL: FieldSource(0x22, "<H")}, entities=_sensor("mppt_error_code", "MPPT Error Code", entity_category=_DIAGNOSTIC))
     temperature: float | None = source_field(sources={_DETAIL: FieldSource(0x24, "<h", float)}, entities=_sensor("mppt_temperature", "MPPT Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=SensorStateClass.MEASUREMENT, entity_category=_DIAGNOSTIC))
     warning_code: int | None = source_field(sources={_DETAIL: FieldSource(0x26, "<H")}, entities=_sensor("mppt_warning_code", "MPPT Warning Code", entity_category=_DIAGNOSTIC))
