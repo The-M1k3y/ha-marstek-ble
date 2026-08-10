@@ -2,6 +2,7 @@
 
 ## 2026-08-10
 
+- **MPPT state flags**: Refined Jupiter `0x14` offset `0x20` from a mostly opaque raw word into a partially understood bitfield. Bit 2 (`0x0004`) is strongly supported as MPPT controller initialized/ready; bits 4–7 (`0x0010`–`0x0080`) remain confirmed as PV inputs 1–4 active. Bit 0 (`0x0001`) is tentatively associated with an opposing MPPT stopped/parked/disabled state after appearing alone during the full-battery PV shutdown sequence. Captures also showed `0x0014` during restart with only PV1 active and `0x0004` with the controller ready but no active PV input. Bit 0 and bit 2 were not observed set simultaneously. Bits 1, 3, and 8–15 remain unresolved, while the integration continues to preserve the complete raw 16-bit word.
 - **Operational status**: Refined the tentative interpretation of Jupiter `0x03` offset `0x3C`. Bit 1 (`0x02`) correlates with full-battery/excess-energy handling but is not a generic surplus-feed-in, grid-export, inverter-active, or battery-discharge flag. A scheduled-export counterexample showed the bit clear while the inverter was exporting substantially from the battery. Its exact trigger and semantics remain unresolved; `excess-energy/full-battery mode` is only a working description. Bit 0 remains unresolved.
 - **Grid validity**: Reclassified Jupiter `0x03` offset `0x0E` from `AC Output Active` to `Grid Connection Valid`. Controlled zero-output, grid-loss, and grid-return behavior shows that it represents a qualified grid connection rather than output power or raw voltage presence.
 - **Inverter errors**: Identified Jupiter `0x03` offsets `0x23–0x24` as the same little-endian inverter error code exposed at `0x14` offset `0x02`. A controlled grid disconnect produced transient `0x040A` followed by persistent `0x0426`; the numeric mapping is confirmed while the tentative semantic labels remain `overfrequency` and `island / anti-islanding detection` respectively.
@@ -49,7 +50,7 @@
 ## 2026-08-04
 
 - **Update**: Added a progressive `protocol/venus/messages/` hierarchy with one focused concept for every BLE message sent or parsed by the integration.
-- **Update**: Documented request and response fields by byte offset, including length, type, name, unit, descriptions, unknown gaps, ignored suffixes, and overlapping interpretations.
+- **Update**: Documented request and response fields by byte offset, including length, type, unit, and a name; added descriptions where names were insufficient and explicitly listed unknown/unused ranges.
 - **Update**: Refactored the command reference into a compact inventory linking to the detailed message concepts.
 - **Update**: Required aligned Markdown tables and byte-offset ordering in `Agents.md`.
 - **Initialization**: Created the OKF v0.2 knowledge bundle from repository revision `59ea1c3f0e6f239cecbae7f9024e0dc48c328d89`.
