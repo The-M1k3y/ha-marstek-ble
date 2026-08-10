@@ -218,8 +218,37 @@ more than grid-voltage presence: they clear when the grid is removed and can
 remain clear after voltage/frequency measurements return while the grid
 connection has not yet become valid. The individual flag bits remain unresolved.
 
-`*` MPPT bits 4–7 identify active PV inputs 1–4. Bit 2 is strongly
-supported as an initialized/ready state. Other bits remain unresolved.
+### MPPT state flags at `0x20`
+
+The integration preserves the complete 16-bit state word. Individual bit meanings
+are only assigned where repeated observations support them.
+
+| Bit | Mask     | Working interpretation             | Confidence |
+| --: | -------- | ---------------------------------- | ---------- |
+|   0 | `0x0001` | MPPT stopped / parked / disabled   | Tentative  |
+|   1 | `0x0002` | unresolved                         | —          |
+|   2 | `0x0004` | MPPT controller initialized / ready| Strong     |
+|   3 | `0x0008` | unresolved                         | —          |
+|   4 | `0x0010` | PV input 1 active                  | Confirmed  |
+|   5 | `0x0020` | PV input 2 active                  | Confirmed  |
+|   6 | `0x0040` | PV input 3 active                  | Confirmed  |
+|   7 | `0x0080` | PV input 4 active                  | Confirmed  |
+| 8–15| `0x0100`–`0x8000` | unresolved              | —          |
+
+The full-battery tests exposed a useful controller-state sequence. Normal
+four-input MPPT operation used `0x00F4` (bits 2 and 4–7). During the deliberate
+PV shutdown associated with the full-battery headroom sequence, the word changed
+to `0x0001`, leaving only bit 0 set while the controller-ready and all PV-active
+bits were clear. During restart, `0x0014` showed bit 2 plus PV input 1 active
+before the other PV-active bits returned. A separate `0x0004` state showed bit 2
+set while no PV input was active.
+
+These combinations strongly support bit 2 as a controller-ready/initialized
+state independent of whether any PV channel is currently active. Bit 0 appears
+to represent an opposing stopped/parked controller state, but its exact firmware
+meaning remains unresolved; **MPPT stopped / parked / disabled** is only a
+working interpretation. Bit 0 and bit 2 were not observed set simultaneously in
+the inspected captures. Bits 1, 3, and 8–15 remain unresolved.
 
 ### Battery-pack summary record
 
