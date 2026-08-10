@@ -100,8 +100,8 @@ class JupiterRuntimeData:
 class JupiterEnergyData:
     """PV-generation and discharge-energy counters."""
 
-    daily_pv_generation: float | None = source_field(sources={_RUNTIME: FieldSource(0x17, "<I", divide_by(100)), _DETAIL: FieldSource(0x40, "<I", divide_by(100))}, entities=_sensor("daily_pv_generation", "Daily PV Generation", native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR, device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING))
-    monthly_pv_generation: float | None = source_field(sources={_RUNTIME: FieldSource(0x1B, "<I", divide_by(100)), _DETAIL: FieldSource(0x48, "<I", divide_by(100))}, entities=_sensor("monthly_pv_generation", "Monthly PV Generation", native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR, device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING))
+    daily_pv_generation: float | None = source_field(sources={_RUNTIME: FieldSource(0x17, "<I", divide_by(100)), _DETAIL: FieldSource(0x40, "<I", divide_by(100))}, entities=_sensor("daily_pv_generation", "Daily PV Generation", native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR, device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING, entity_category=_DIAGNOSTIC))
+    monthly_pv_generation: float | None = source_field(sources={_RUNTIME: FieldSource(0x1B, "<I", divide_by(100)), _DETAIL: FieldSource(0x48, "<I", divide_by(100))}, entities=_sensor("monthly_pv_generation", "Monthly PV Generation", native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR, device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING, entity_category=_DIAGNOSTIC))
     total_pv_generation: float | None = source_field(sources={_RUNTIME: FieldSource(0x1F, "<I", divide_by(100)), _DETAIL: FieldSource(0x4C, "<I", divide_by(100))}, entities=_sensor("total_pv_generation", "Total PV Generation", native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR, device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING))
     daily_discharge_energy: float | None = source_field(sources={_RUNTIME: FieldSource(0x27, "<I", divide_by(100)), _DETAIL: FieldSource(0x14, "<I", divide_by(100))}, entities=_sensor("daily_discharge_energy", "Daily Discharge Energy", native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR, device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING))
     monthly_discharge_energy: float | None = source_field(sources={_RUNTIME: FieldSource(0x2B, "<I", divide_by(100)), _DETAIL: FieldSource(0x1C, "<I", divide_by(100))}, entities=_sensor("monthly_discharge_energy", "Monthly Discharge Energy", native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR, device_class=SensorDeviceClass.ENERGY, state_class=SensorStateClass.TOTAL_INCREASING))
@@ -115,12 +115,12 @@ class JupiterInverterData:
     state_flags: int | None = source_field(sources={_DETAIL: FieldSource(0x00, "<H")}, entities=_sensor("inverter_state_flags", "Inverter State Flags", entity_category=_DIAGNOSTIC))
     error_code: int | None = source_field(sources={_DETAIL: FieldSource(0x02, "<H")}, entities=_sensor("inverter_error_code", "Inverter Error Code", entity_category=_DIAGNOSTIC))
     warning_code: int | None = source_field(sources={_DETAIL: FieldSource(0x04, "<H")}, entities=_sensor("inverter_warning_code", "Inverter Warning Code", entity_category=_DIAGNOSTIC))
-    grid_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x06, "<H", divide_by(10))}, entities=_sensor("grid_voltage", "Grid Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT))
+    grid_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x06, "<H", divide_by(10))}, entities=_sensor("grid_voltage", "Grid Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=_DIAGNOSTIC))
     grid_current: float | None = source_field(sources={_DETAIL: FieldSource(0x08, "<H", divide_by(10))})
     grid_power_factor: int | None = source_field(sources={_DETAIL: FieldSource(0x0A, "<H")}, entities=_sensor("grid_power_factor", "Grid Power Factor", entity_category=_DIAGNOSTIC))
     grid_frequency: float | None = source_field(sources={_DETAIL: FieldSource(0x0C, "<H", divide_by(100))}, entities=_sensor("grid_frequency", "Grid Frequency", native_unit_of_measurement=UnitOfFrequency.HERTZ, device_class=SensorDeviceClass.FREQUENCY, state_class=SensorStateClass.MEASUREMENT, suggested_display_precision=2))
     bus_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x0E, "<H", divide_by(10))}, entities=_sensor("bus_voltage", "Internal Bus Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, entity_category=_DIAGNOSTIC))
-    temperature: float | None = source_field(sources={_DETAIL: FieldSource(0x12, "<h", float)}, entities=_sensor("inverter_temperature", "Inverter Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=SensorStateClass.MEASUREMENT))
+    temperature: float | None = source_field(sources={_DETAIL: FieldSource(0x12, "<h", float)}, entities=_sensor("inverter_temperature", "Inverter Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=SensorStateClass.MEASUREMENT, entity_category=_DIAGNOSTIC))
 
 
 @dataclass(slots=True)
@@ -129,7 +129,7 @@ class JupiterMpptData:
 
     state_flags: int | None = source_field(sources={_DETAIL: FieldSource(0x20, "<H")}, entities=_sensor("mppt_state_flags", "MPPT State Flags", entity_category=_DIAGNOSTIC))
     error_code: int | None = source_field(sources={_DETAIL: FieldSource(0x22, "<H")}, entities=_sensor("mppt_error_code", "MPPT Error Code", entity_category=_DIAGNOSTIC))
-    temperature: float | None = source_field(sources={_DETAIL: FieldSource(0x24, "<h", float)}, entities=_sensor("mppt_temperature", "MPPT Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=SensorStateClass.MEASUREMENT))
+    temperature: float | None = source_field(sources={_DETAIL: FieldSource(0x24, "<h", float)}, entities=_sensor("mppt_temperature", "MPPT Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=SensorStateClass.MEASUREMENT, entity_category=_DIAGNOSTIC))
     warning_code: int | None = source_field(sources={_DETAIL: FieldSource(0x26, "<H")}, entities=_sensor("mppt_warning_code", "MPPT Warning Code", entity_category=_DIAGNOSTIC))
     dc_output_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x50, "<H", divide_by(10))}, entities=_sensor("mppt_dc_output_voltage", "MPPT DC Output Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, entity_category=_DIAGNOSTIC))
     dc_output_current: float | None = source_field(sources={_DETAIL: FieldSource(0x52, "<h", divide_by(10))}, entities=_sensor("mppt_dc_output_current", "MPPT DC Output Current", native_unit_of_measurement=UnitOfElectricCurrent.AMPERE, device_class=SensorDeviceClass.CURRENT, entity_category=_DIAGNOSTIC))
@@ -141,8 +141,8 @@ class JupiterBatteryPackData:
 
     highest_cell_index: int | None = source_field(sources={_DETAIL: FieldSource(0x00, "<B")}, entities=_sensor("highest_cell_index", "Highest Cell Index", entity_category=_DIAGNOSTIC))
     lowest_cell_index: int | None = source_field(sources={_DETAIL: FieldSource(0x01, "<B")}, entities=_sensor("lowest_cell_index", "Lowest Cell Index", entity_category=_DIAGNOSTIC))
-    highest_cell_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x02, "<H", divide_by(1000))}, entities=_sensor("highest_cell_voltage", "Highest Cell Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT, suggested_display_precision=3))
-    lowest_cell_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x04, "<H", divide_by(1000))}, entities=_sensor("lowest_cell_voltage", "Lowest Cell Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT, suggested_display_precision=3))
+    highest_cell_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x02, "<H", divide_by(1000))}, entities=_sensor("highest_cell_voltage", "Highest Cell Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT, suggested_display_precision=3, entity_category=_DIAGNOSTIC))
+    lowest_cell_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x04, "<H", divide_by(1000))}, entities=_sensor("lowest_cell_voltage", "Lowest Cell Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT, suggested_display_precision=3, entity_category=_DIAGNOSTIC))
     status: int | None = source_field(sources={_DETAIL: FieldSource(0x06, "<H")}, entities=_sensor("status", "Status", entity_category=_DIAGNOSTIC))
 
 
@@ -158,14 +158,16 @@ _BATTERY_CHILDREN = RepeatedChildDeviceSpec(
 class JupiterBatteryData:
     """Aggregate BMS telemetry and four fixed battery-pack slots."""
 
+    base_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x54, "<H", divide_by(10))}, entities=_sensor("base_voltage", "Base Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=_DIAGNOSTIC))
+    pe_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x56, "<H", divide_by(10))}, entities=_sensor("pe_voltage", "PE Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=_DIAGNOSTIC))
     charge_voltage_limit: float | None = source_field(sources={_DETAIL: FieldSource(0x58, "<H", divide_by(10))}, entities=_sensor("charge_voltage_limit", "Charge Voltage Limit", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, entity_category=_DIAGNOSTIC))
     charge_current_limit: float | None = source_field(sources={_DETAIL: FieldSource(0x5A, "<H", divide_by(10))}, entities=_sensor("charge_current_limit", "Charge Current Limit", native_unit_of_measurement=UnitOfElectricCurrent.AMPERE, device_class=SensorDeviceClass.CURRENT, entity_category=_DIAGNOSTIC))
     discharge_current_limit: float | None = source_field(sources={_DETAIL: FieldSource(0x5C, "<H", divide_by(10))}, entities=_sensor("discharge_current_limit", "Discharge Current Limit", native_unit_of_measurement=UnitOfElectricCurrent.AMPERE, device_class=SensorDeviceClass.CURRENT, entity_category=_DIAGNOSTIC))
-    soh: float | None = source_field(sources={_DETAIL: FieldSource(0x60, "<H", float)}, entities=_sensor("battery_soh", "Battery SOH", native_unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT))
+    soh: float | None = source_field(sources={_DETAIL: FieldSource(0x60, "<H", float)}, entities=_sensor("battery_soh", "Battery SOH", native_unit_of_measurement=PERCENTAGE, state_class=SensorStateClass.MEASUREMENT, entity_category=_DIAGNOSTIC))
     rated_capacity: float | None = source_field(sources={_DETAIL: FieldSource(0x62, "<H", float)}, entities=_sensor("rated_capacity", "Rated Battery Capacity", native_unit_of_measurement=UnitOfEnergy.WATT_HOUR, device_class=SensorDeviceClass.ENERGY))
     voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x66, "<H", divide_by(100))}, entities=_sensor("battery_voltage", "Battery Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT, suggested_display_precision=2))
     current: float | None = source_field(sources={_DETAIL: FieldSource(0x68, "<h", divide_by(10))}, entities=_sensor("battery_current", "Battery Current", native_unit_of_measurement=UnitOfElectricCurrent.AMPERE, device_class=SensorDeviceClass.CURRENT, state_class=SensorStateClass.MEASUREMENT))
-    temperature: float | None = source_field(sources={_DETAIL: FieldSource(0x6A, "<h", divide_by(10))}, entities=_sensor("battery_temperature", "Battery Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=SensorStateClass.MEASUREMENT))
+    temperature: float | None = source_field(sources={_DETAIL: FieldSource(0x6A, "<h", divide_by(10))}, entities=_sensor("battery_temperature", "Battery Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=SensorStateClass.MEASUREMENT, entity_category=_DIAGNOSTIC))
     error_code_1: int | None = source_field(sources={_DETAIL: FieldSource(0x6C, "<H")}, entities=_sensor("bms_error_code_1", "BMS Error Code 1", entity_category=_DIAGNOSTIC))
     warning_code_1: int | None = source_field(sources={_DETAIL: FieldSource(0x6E, "<H")}, entities=_sensor("bms_warning_code_1", "BMS Warning Code 1", entity_category=_DIAGNOSTIC))
     error_code_2: int | None = source_field(sources={_DETAIL: FieldSource(0x70, "<H")}, entities=_sensor("bms_error_code_2", "BMS Error Code 2", entity_category=_DIAGNOSTIC))
@@ -186,13 +188,13 @@ class JupiterBatteryData:
 class JupiterEventRecord:
     """One event-history record; event semantics remain unresolved."""
 
-    year: int | None = source_field(sources={_EVENTS: FieldSource(0x00, "<H")})
-    month: int | None = source_field(sources={_EVENTS: FieldSource(0x02, "<B")})
-    day: int | None = source_field(sources={_EVENTS: FieldSource(0x03, "<B")})
-    hour: int | None = source_field(sources={_EVENTS: FieldSource(0x04, "<B")})
-    minute: int | None = source_field(sources={_EVENTS: FieldSource(0x05, "<B")})
-    event_value: int | None = source_field(sources={_EVENTS: FieldSource(0x06, "<B")})
-    event_state: int | None = source_field(sources={_EVENTS: FieldSource(0x07, "<B")})
+    year: int | None = source_field(sources={_EVENTS: FieldSource(0x00, "<H")}, entities=_sensor("year", "Year", entity_category=_DIAGNOSTIC))
+    month: int | None = source_field(sources={_EVENTS: FieldSource(0x02, "<B")}, entities=_sensor("month", "Month", entity_category=_DIAGNOSTIC))
+    day: int | None = source_field(sources={_EVENTS: FieldSource(0x03, "<B")}, entities=_sensor("day", "Day", entity_category=_DIAGNOSTIC))
+    hour: int | None = source_field(sources={_EVENTS: FieldSource(0x04, "<B")}, entities=_sensor("hour", "Hour", entity_category=_DIAGNOSTIC))
+    minute: int | None = source_field(sources={_EVENTS: FieldSource(0x05, "<B")}, entities=_sensor("minute", "Minute", entity_category=_DIAGNOSTIC))
+    event_value: int | None = source_field(sources={_EVENTS: FieldSource(0x06, "<B")}, entities=_sensor("event_value", "Event Value or ID", entity_category=_DIAGNOSTIC))
+    event_state: int | None = source_field(sources={_EVENTS: FieldSource(0x07, "<B")}, entities=_sensor("event_state", "Event Type or State", entity_category=_DIAGNOSTIC))
 
 
 @dataclass(slots=True)
@@ -220,7 +222,7 @@ class JupiterData:
     mppt: JupiterMpptData = section_field(JupiterMpptData)
     pv_inputs: list[JupiterPvInputData] = repeated_section_field(JupiterPvInputData, count=4, sources={_RUNTIME: RepeatedSectionSource(0, 3), _DETAIL: RepeatedSectionSource(0x28, 6)}, item_name_factory=lambda index: f"PV Input {index + 1}")
     battery: JupiterBatteryData = section_field(JupiterBatteryData)
-    events: list[JupiterEventRecord] = repeated_section_field(JupiterEventRecord, count=20, sources={_EVENTS: RepeatedSectionSource(0, 8)})
+    events: list[JupiterEventRecord] = repeated_section_field(JupiterEventRecord, count=20, sources={_EVENTS: RepeatedSectionSource(0, 8)}, item_name_factory=lambda index: f"Event {index + 1}")
     identity: JupiterIdentityData = section_field(JupiterIdentityData)
     raw_status: JupiterRawStatusData = section_field(JupiterRawStatusData)
 
