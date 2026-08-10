@@ -71,17 +71,30 @@ def test_unverified_jupiter_fields_are_diagnostic_entities() -> None:
     )
 
 
-def test_event_history_fields_are_exposed_as_diagnostics() -> None:
+def test_event_history_is_exposed_as_one_text_sensor_per_record() -> None:
     data = JupiterData()
+    payload = bytearray(160)
+    payload[0:8] = struct.pack("<HBBBBBB", 2026, 8, 10, 14, 5, 0x12, 0xA4)
+    parse_into(payload, JupiterPackets.EVENT_HISTORY, data)
+
     plan = JUPITER_PROFILE.build_entity_plan(data)
     entities = {entity.unique_key: entity for entity in plan.entities}
 
     for index in range(20):
-        prefix = f"events_{index}"
+        summary = entities[f"events_{index}_summary"]
+        assert summary.description.entity_category is EntityCategory.DIAGNOSTIC
+        assert summary.description.name == f"Event {index + 1} Record"
         for key in ("year", "month", "day", "hour", "minute", "event_value", "event_state"):
-            entity = entities[f"{prefix}_{key}"]
-            assert entity.description.entity_category is EntityCategory.DIAGNOSTIC
-            assert entity.description.name.startswith(f"Event {index + 1} ")
+            assert f"events_{index}_{key}" not in entities
+
+    assert entities["events_0_summary"].value_from(data) == "2026-08-10 14:05 | 0x12 0xA4"
+    assert data.events[0].year == 2026
+    assert data.events[0].month == 8
+    assert data.events[0].day == 10
+    assert data.events[0].hour == 14
+    assert data.events[0].minute == 5
+    assert data.events[0].event_value == 0x12
+    assert data.events[0].event_state == 0xA4
 
 
 def test_tentative_base_and_pe_voltages_parse_with_diagnostic_entities() -> None:
