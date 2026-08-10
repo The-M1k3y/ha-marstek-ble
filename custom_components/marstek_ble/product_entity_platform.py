@@ -10,6 +10,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entity import EntityBinding, EntityPlatform
 from .product_coordinator import ProductDataUpdateCoordinator
+from .products import VENUS_RUNTIME
 
 EntityFactory = Callable[[ProductDataUpdateCoordinator, ConfigEntry, EntityBinding], Any]
 
@@ -64,6 +65,12 @@ def setup_product_entity_platform(
 ) -> ProductEntityManager:
     """Create a manager, subscribe it to updates, and populate current entities."""
 
+    # Compatibility callers created before product-aware coordinators existed may
+    # still supply VenusData without a ``product`` attribute. Treat those as the
+    # historical Venus runtime while keeping real product coordinators explicit.
+    if not hasattr(coordinator, "product"):
+        coordinator.product = VENUS_RUNTIME
+
     manager = ProductEntityManager(
         coordinator,
         entry,
@@ -71,7 +78,13 @@ def setup_product_entity_platform(
         platform,
         factory,
     )
-    unsubscribe = coordinator.async_add_listener(manager.sync)
-    entry.async_on_unload(unsubscribe)
+
+    add_listener = getattr(coordinator, "async_add_listener", None)
+    if add_listener is not None:
+        unsubscribe = add_listener(manager.sync)
+        async_on_unload = getattr(entry, "async_on_unload", None)
+        if async_on_unload is not None:
+            async_on_unload(unsubscribe)
+
     manager.sync()
     return manager
