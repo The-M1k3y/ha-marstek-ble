@@ -1,17 +1,17 @@
 ---
 type: BLE Message
 title: Jupiter-C Plus 0x03 runtime summary
-description: Sanitized runtime response fields for PV inputs, output, battery state, energy counters, and firmware versions.
+description: Sanitized runtime response fields for PV inputs, grid validity, battery state, energy counters, inverter errors, and firmware versions.
 tags: [jupiter, ble, telemetry, runtime]
 status: draft
-source_revision: "863e113761b0b3d589fa727728307c2c0f4d58e2"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T11:10:00Z }
+source_revision: "8614c49855e2b471cf57113d6297b8321ced9e6f"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T16:16:00Z }
 sources:
   - id: sanitized-map
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/86ba4672a94059ccb11f10258f33fd4bde53ef27/docs/sources/jupiter-c-plus-ble-field-map.md
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/6b476c58e4797c9c315a6a7c50da711b4aecf2b6/docs/sources/jupiter-c-plus-ble-field-map.md
     title: Sanitized Jupiter field map
   - id: model
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/863e113761b0b3d589fa727728307c2c0f4d58e2/custom_components/marstek_ble/products/jupiter.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/8614c49855e2b471cf57113d6297b8321ced9e6f/custom_components/marstek_ble/products/jupiter.py
     title: Declarative Jupiter model
 ---
 
@@ -30,7 +30,7 @@ Payload length: 74 bytes. Offsets are relative to the payload.
 | `0x09` |      2 | `u16 LE`      | PV input 4 power          | W                                       | Confirmed  |
 | `0x0B` |      1 | `u8 / bool`   | PV input 4 connected      | boolean                                 | Confirmed  |
 | `0x0C` |      2 | `u16 LE`      | AC output power           | W                                       | Confirmed  |
-| `0x0E` |      1 | `u8 / bool`   | AC output active          | boolean                                 | Confirmed  |
+| `0x0E` |      1 | `u8 / bool`   | Grid connection valid     | boolean                                 | Confirmed  |
 | `0x0F` |      3 | unknown       | unknown                   | —                                       | —          |
 | `0x12` |      1 | `u8 state`    | Battery state             | 0 idle, 1 charging, 2 discharging       | Confirmed  |
 | `0x13` |      2 | `u16 LE`      | Stored battery energy     | raw × 10 Wh                             | Confirmed  |
@@ -39,7 +39,8 @@ Payload length: 74 bytes. Offsets are relative to the payload.
 | `0x17` |      4 | `u32 LE`      | Daily PV generation       | raw ÷ 100 kWh                           | Strong     |
 | `0x1B` |      4 | `u32 LE`      | Monthly PV generation     | raw ÷ 100 kWh                           | Strong     |
 | `0x1F` |      4 | `u32 LE`      | Total PV generation       | raw ÷ 100 kWh                           | Confirmed  |
-| `0x23` |      4 | unknown       | unknown                   | —                                       | —          |
+| `0x23` |      2 | `u16 LE`      | Inverter error code       | raw                                     | Confirmed  |
+| `0x25` |      2 | unknown       | unknown                   | —                                       | —          |
 | `0x27` |      4 | `u32 LE`      | Daily discharge energy    | raw ÷ 100 kWh                           | Confirmed  |
 | `0x2B` |      4 | `u32 LE`      | Monthly discharge energy  | raw ÷ 100 kWh                           | Confirmed  |
 | `0x2F` |      2 | `u16 LE`      | EMS firmware version      | raw                                     | Confirmed  |
@@ -50,10 +51,23 @@ Payload length: 74 bytes. Offsets are relative to the payload.
 | `0x3C` |      1 | `u8 bitfield` | Operational status        | raw                                     | Tentative  |
 | `0x3D` |     13 | unknown       | unknown                   | —                                       | —          |
 
+The grid-valid flag is independent of requested/output power: it remains true at
+zero target power, clears on physical AC/grid removal, and can remain false for
+a period after valid grid voltage and frequency measurements return. It therefore
+represents a qualified/valid grid connection rather than an active AC-output
+state or raw voltage-presence indication.
+
+The inverter-error field at `0x23` mirrors command `0x14` offset `0x02`. During a
+controlled grid disconnect the observed transition was a transient `0x040A`
+followed by persistent `0x0426`. The field mapping is confirmed. Based on typical
+grid-tie inverter behaviour, `0x040A` is tentatively labeled **overfrequency** and
+`0x0426` **island / anti-islanding detection**; those code meanings are not yet
+confirmed.
+
 The battery-state mapping is supported by controlled observations of idle,
 charging, and forced discharge. Unrecognized raw values are exposed as
 `unknown` rather than treated as charging.
 
-The stored-energy, state-of-charge, generation, discharge, and firmware fields
-share canonical destinations with more precise or duplicate fields in `0x14`.
-The latest successfully parsed packet updates the cumulative value.
+The stored-energy, state-of-charge, generation, discharge, firmware, and inverter
+error fields share canonical destinations with more precise or duplicate fields
+in `0x14`. The latest successfully parsed packet updates the cumulative value.
