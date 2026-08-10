@@ -7,6 +7,15 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import (
+    PERCENTAGE,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+    UnitOfEnergy,
+    UnitOfPower,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH
 from homeassistant.helpers.entity import EntityCategory
@@ -15,8 +24,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import MarstekDataUpdateCoordinator
-from .entity import EntityBinding, EntityPlatform
-from .product_entity_platform import setup_product_entity_platform
+from .product_entity_platform import (
+    EntityBinding,
+    EntityPlatform,
+    setup_product_entity_platform,
+)
 
 _LOGGER = logging.getLogger(__name__)
 VERBOSE_LOGGER = logging.getLogger(f"{__name__}.verbose")
@@ -24,15 +36,198 @@ VERBOSE_LOGGER.propagate = False
 VERBOSE_LOGGER.setLevel(logging.INFO)
 STALE_AFTER_SECONDS = 10 * 60
 
+_LEGACY_SENSOR_SPECS = (
+    ("battery_voltage", "Battery Voltage", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE),
+    ("battery_current", "Battery Current", UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT),
+    ("battery_soc", "Battery SOC", PERCENTAGE, SensorDeviceClass.BATTERY),
+    ("battery_soh", "Battery SOH", PERCENTAGE, None),
+    ("battery_temp", "Battery Temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE),
+    ("battery_power", "Battery Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+    ("grid_power", "Grid Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+    ("solar_power", "Solar Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+    ("battery_power_in", "Battery Power In", UnitOfPower.WATT, SensorDeviceClass.POWER),
+    ("battery_power_out", "Battery Power Out", UnitOfPower.WATT, SensorDeviceClass.POWER),
+    ("out1_power", "Output 1 Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
+    ("daily_energy_charged", "Daily Energy Charged", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY),
+    ("daily_energy_discharged", "Daily Energy Discharged", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY),
+    ("monthly_energy_charged", "Monthly Energy Charged", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY),
+    ("monthly_energy_discharged", "Monthly Energy Discharged", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY),
+    ("total_energy_charged", "Total Energy Charged", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY),
+    ("total_energy_discharged", "Total Energy Discharged", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY),
+    ("design_capacity", "Design Capacity", UnitOfEnergy.WATT_HOUR, SensorDeviceClass.ENERGY),
+    ("remaining_capacity", "Remaining Capacity", UnitOfEnergy.WATT_HOUR, SensorDeviceClass.ENERGY_STORAGE),
+    ("available_capacity", "Available Capacity", UnitOfEnergy.WATT_HOUR, SensorDeviceClass.ENERGY_STORAGE),
+    ("temp_low", "Temperature Low", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE),
+    ("temp_high", "Temperature High", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE),
+    ("mosfet_temp", "MOSFET Temperature", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE),
+    ("temp_sensor_1", "Temperature Sensor 1", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE),
+    ("temp_sensor_2", "Temperature Sensor 2", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE),
+    ("temp_sensor_3", "Temperature Sensor 3", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE),
+    ("temp_sensor_4", "Temperature Sensor 4", UnitOfTemperature.CELSIUS, SensorDeviceClass.TEMPERATURE),
+    ("system_status", "System Status", None, None),
+    ("config_mode", "Config Mode", None, None),
+    ("ct_polling_rate", "CT Polling Rate", None, None),
+    ("work_mode", "Work Mode", None, None),
+    ("product_code", "Product Code", None, None),
+    ("power_rating", "Power Rating", UnitOfPower.WATT, SensorDeviceClass.POWER),
+    ("bms_version", "BMS Version", None, None),
+    ("voltage_limit", "Voltage Limit", UnitOfElectricPotential.VOLT, SensorDeviceClass.VOLTAGE),
+    ("charge_current_limit", "Charge Current Limit", UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT),
+    ("discharge_current_limit", "Discharge Current Limit", UnitOfElectricCurrent.AMPERE, SensorDeviceClass.CURRENT),
+    ("error_code", "Error Code", None, None),
+    ("warning_code", "Warning Code", None, None),
+    ("runtime_hours", "Runtime", UnitOfTime.HOURS, SensorDeviceClass.DURATION),
+)
+
+_LEGACY_TEXT_SPECS = (
+    ("battery_state", "Battery State"),
+    ("device_type", "Device Type"),
+    ("device_id", "Device ID"),
+    ("serial_number", "Serial Number"),
+    ("mac_address", "MAC Address"),
+    ("firmware_version", "Firmware Version"),
+    ("hardware_version", "Hardware Version"),
+    ("wifi_ssid", "WiFi SSID"),
+    ("network_info", "Network Info"),
+    ("ip_address", "IP Address"),
+    ("gateway", "Gateway"),
+    ("subnet_mask", "Subnet Mask"),
+    ("dns_server", "DNS Server"),
+    ("meter_ip", "Meter IP"),
+)
+
+
+def _legacy_value(key: str):
+    """Return a value getter matching the historical flat Venus entities."""
+
+    if key == "battery_power":
+        return lambda data: (
+            data.battery_voltage * data.battery_current
+            if data.battery_voltage is not None and data.battery_current is not None
+            else None
+        )
+    if key == "battery_power_in":
+        return lambda data: (
+            max(0, data.battery_voltage * data.battery_current)
+            if data.battery_voltage is not None and data.battery_current is not None
+            else None
+        )
+    if key == "battery_power_out":
+        return lambda data: (
+            max(0, -(data.battery_voltage * data.battery_current))
+            if data.battery_voltage is not None and data.battery_current is not None
+            else None
+        )
+    if key == "remaining_capacity":
+        return lambda data: (
+            (data.battery_soc / 100.0) * data.design_capacity
+            if data.battery_soc is not None and data.design_capacity is not None
+            else None
+        )
+    if key == "available_capacity":
+        return lambda data: (
+            ((100.0 - data.battery_soc) / 100.0) * data.design_capacity
+            if data.battery_soc is not None and data.design_capacity is not None
+            else None
+        )
+    if key == "battery_state":
+        return lambda data: (
+            "charging"
+            if data.battery_voltage is not None
+            and data.battery_current is not None
+            and data.battery_voltage * data.battery_current > 5
+            else "discharging"
+            if data.battery_voltage is not None
+            and data.battery_current is not None
+            and data.battery_voltage * data.battery_current < -5
+            else "inactive"
+        )
+    return lambda data, attribute=key: getattr(data, attribute)
+
+
+def _setup_legacy_sensors(
+    coordinator: MarstekDataUpdateCoordinator,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the historical flat Venus entity contract."""
+
+    entities: list[MarstekSensor] = []
+    for key, name, unit, device_class in _LEGACY_SENSOR_SPECS:
+        stale_fields = None
+        if key in {"battery_power", "battery_power_in", "battery_power_out"}:
+            stale_fields = ["battery_voltage", "battery_current"]
+        elif key in {"remaining_capacity", "available_capacity"}:
+            stale_fields = ["battery_soc", "design_capacity"]
+        state_class = (
+            SensorStateClass.TOTAL_INCREASING
+            if key.startswith(("daily_energy_", "monthly_energy_", "total_energy_"))
+            or key == "runtime_hours"
+            else SensorStateClass.MEASUREMENT
+            if device_class not in {None, SensorDeviceClass.ENERGY}
+            else None
+        )
+        entities.append(
+            MarstekSensor(
+                coordinator,
+                entry,
+                key,
+                name,
+                _legacy_value(key),
+                unit,
+                device_class,
+                state_class,
+                stale_fields=stale_fields,
+            )
+        )
+
+    for index in range(16):
+        entities.append(
+            MarstekSensor(
+                coordinator,
+                entry,
+                f"cell_{index + 1}_voltage",
+                f"Cell {index + 1} Voltage",
+                lambda data, idx=index: (
+                    data.cell_voltages[idx]
+                    if data.cell_voltages and idx < len(data.cell_voltages)
+                    else None
+                ),
+                UnitOfElectricPotential.VOLT,
+                SensorDeviceClass.VOLTAGE,
+                SensorStateClass.MEASUREMENT,
+                suggested_display_precision=2,
+            )
+        )
+
+    for key, name in _LEGACY_TEXT_SPECS:
+        stale_fields = ["battery_voltage", "battery_current"] if key == "battery_state" else None
+        entities.append(
+            MarstekTextSensor(
+                coordinator,
+                entry,
+                key,
+                name,
+                _legacy_value(key),
+                stale_fields=stale_fields,
+            )
+        )
+
+    async_add_entities(entities)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up declarative Marstek BLE sensors from a config entry."""
+    """Set up Marstek BLE sensors from a config entry."""
 
     coordinator = entry.runtime_data
+    if not hasattr(coordinator, "product") and not hasattr(coordinator.data, "battery"):
+        _setup_legacy_sensors(coordinator, entry, async_add_entities)
+        return
+
     setup_product_entity_platform(
         coordinator,
         entry,
@@ -41,8 +236,6 @@ async def async_setup_entry(
         MarstekSensor,
     )
 
-    # Preserve the legacy Venus-only presentation sensor until it is represented
-    # directly in the Venus product profile.
     if coordinator.product.product_id == "venus":
         async_add_entities(
             [
@@ -51,17 +244,7 @@ async def async_setup_entry(
                     entry,
                     "battery_state",
                     "Battery State",
-                    lambda data: (
-                        "charging"
-                        if data.battery_voltage is not None
-                        and data.battery_current is not None
-                        and data.battery_voltage * data.battery_current > 5
-                        else "discharging"
-                        if data.battery_voltage is not None
-                        and data.battery_current is not None
-                        and data.battery_voltage * data.battery_current < -5
-                        else "inactive"
-                    ),
+                    _legacy_value("battery_state"),
                     stale_fields=["battery_voltage", "battery_current"],
                 )
             ]
@@ -69,11 +252,7 @@ async def async_setup_entry(
 
 
 class MarstekSensor(CoordinatorEntity, SensorEntity):
-    """Representation of a Marstek sensor.
-
-    The legacy constructor remains supported for regression compatibility while
-    live setup now supplies an :class:`EntityBinding` from the product profile.
-    """
+    """Representation of a Marstek sensor."""
 
     def __init__(
         self,
