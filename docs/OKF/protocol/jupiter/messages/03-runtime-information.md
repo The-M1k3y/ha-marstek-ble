@@ -4,14 +4,14 @@ title: Jupiter-C Plus 0x03 runtime summary
 description: Sanitized runtime response fields for PV inputs, output, battery state, energy counters, and firmware versions.
 tags: [jupiter, ble, telemetry, runtime]
 status: draft
-source_revision: "863e113761b0b3d589fa727728307c2c0f4d58e2"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T11:10:00Z }
+source_revision: "4a91e24a21a63171cfbffad4111b8caf5d25432c"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T11:57:00Z }
 sources:
   - id: sanitized-map
     resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/86ba4672a94059ccb11f10258f33fd4bde53ef27/docs/sources/jupiter-c-plus-ble-field-map.md
     title: Sanitized Jupiter field map
   - id: model
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/863e113761b0b3d589fa727728307c2c0f4d58e2/custom_components/marstek_ble/products/jupiter.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/4a91e24a21a63171cfbffad4111b8caf5d25432c/custom_components/marstek_ble/products/jupiter.py
     title: Declarative Jupiter model
 ---
 
@@ -53,6 +53,11 @@ Payload length: 74 bytes. Offsets are relative to the payload.
 The battery-state mapping is supported by controlled observations of idle,
 charging, and forced discharge. Unrecognized raw values are exposed as
 `unknown` rather than treated as charging.
+
+The `Strong` daily and monthly PV-generation counters and the `Tentative`
+operational-status bitfield are exposed as diagnostic sensors while their
+interpretations remain under observation. Unknown byte ranges with no current
+semantic hypothesis remain unexposed.
 
 The stored-energy, state-of-charge, generation, discharge, and firmware fields
 share canonical destinations with more precise or duplicate fields in `0x14`.
