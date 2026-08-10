@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -46,10 +47,32 @@ class ProductEntityManager:
         for binding in plan.entities:
             if binding.platform is not self.platform:
                 continue
-            if binding.unique_key in self._known_keys:
+
+            # Fixed indexed scalar fields already provide a distinct entity key
+            # for each index (for example Venus ``cell_1_voltage``). The planner's
+            # path-derived repeated key is useful internally, but exposing it in
+            # Home Assistant would change established entity unique IDs. Repeated
+            # product records keep their topology key because their path ends in a
+            # field name rather than the indexed scalar itself.
+            live_binding = binding
+            if (
+                binding.device.key == "main"
+                and binding.repeated_key is not None
+                and binding.path
+                and isinstance(binding.path[-1], int)
+            ):
+                index = binding.path[-1]
+                field_path = ".".join(str(part) for part in binding.path[:-1])
+                if binding.repeated_key == f"{field_path}_{index}":
+                    live_binding = replace(binding, repeated_key=None)
+
+            unique_key = live_binding.unique_key
+            if unique_key in self._known_keys:
                 continue
-            new_entities.append(self._factory(self.coordinator, self.entry, binding))
-            new_keys.append(binding.unique_key)
+            new_entities.append(
+                self._factory(self.coordinator, self.entry, live_binding)
+            )
+            new_keys.append(unique_key)
 
         if new_entities:
             self._async_add_entities(new_entities)
