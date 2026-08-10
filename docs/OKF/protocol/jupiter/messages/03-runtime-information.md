@@ -8,7 +8,7 @@ source_revision: "863e113761b0b3d589fa727728307c2c0f4d58e2"
 generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T11:10:00Z }
 sources:
   - id: sanitized-map
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/2cd631c99cf445d0526f450e1f7d5e55f5958178/docs/sources/jupiter-c-plus-ble-field-map.md
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/86ba4672a94059ccb11f10258f33fd4bde53ef27/docs/sources/jupiter-c-plus-ble-field-map.md
     title: Sanitized Jupiter field map
   - id: model
     resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/863e113761b0b3d589fa727728307c2c0f4d58e2/custom_components/marstek_ble/products/jupiter.py
