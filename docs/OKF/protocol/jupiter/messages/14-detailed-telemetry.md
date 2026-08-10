@@ -4,14 +4,14 @@ title: Jupiter-C Plus 0x14 detailed telemetry
 description: Inverter, grid, MPPT, PV-input, battery, and repeated battery-pack response layout.
 tags: [jupiter, ble, telemetry, inverter, mppt, bms]
 status: draft
-source_revision: "863e113761b0b3d589fa727728307c2c0f4d58e2"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T11:15:00Z }
+source_revision: "4a91e24a21a63171cfbffad4111b8caf5d25432c"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T11:57:00Z }
 sources:
   - id: sanitized-map
     resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/86ba4672a94059ccb11f10258f33fd4bde53ef27/docs/sources/jupiter-c-plus-ble-field-map.md
     title: Sanitized Jupiter field map
   - id: model
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/863e113761b0b3d589fa727728307c2c0f4d58e2/custom_components/marstek_ble/products/jupiter.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/4a91e24a21a63171cfbffad4111b8caf5d25432c/custom_components/marstek_ble/products/jupiter.py
     title: Declarative Jupiter model
 ---
 
@@ -33,13 +33,32 @@ that structure by contiguous byte range without changing field order.
 | `0x7A–0x99` | Four repeated 8-byte battery-pack summaries                            |
 | `0x9A–0xA5` | Battery, environment, and MOSFET temperatures                          |
 
+# Diagnostic observation policy
+
+Fields with a current structural interpretation but only `Strong` or `Tentative`
+confidence are exposed as Home Assistant diagnostic sensors so their changes can
+be observed over longer periods without presenting them as verified normal
+telemetry. This includes inverter and MPPT status/error values, strong electrical
+and temperature interpretations, BMS status/error values, battery-pack summary
+fields, and the tentative `Base Voltage` and `PE Voltage` fields at `0x54` and
+`0x56`.
+
+Fields with `Confirmed` meanings retain their normal entity classification where
+appropriate. Some confirmed configuration or implementation-oriented values may
+still be diagnostic by design; the confidence classification does not require a
+normal entity.
+
+Fields for which no current Jupiter-specific meaning exists are not exposed just
+because bytes are present. This distinction keeps observational entities tied to
+an actual hypothesis rather than producing arbitrary raw-byte sensors.
+
 # Inverter field at `0x08`
 
 The two-byte field at `0x08` was previously interpreted as grid current.
 Controlled Jupiter observations showed it remaining zero while grid voltage and
 AC output power were non-zero. Its semantics and scale are therefore unresolved.
-The integration retains the field internally for future investigation but no
-longer exposes it as a Home Assistant `Grid Current` sensor.
+The integration retains the field internally for future investigation but does
+not expose it as a Home Assistant sensor.
 
 # Multiple packet sources
 
@@ -73,5 +92,6 @@ controls setup-time child-device creation.
 |         `+0x04` |      2 | `u16 LE` | Lowest cell voltage        | ÷ 1000 V   |
 |         `+0x06` |      2 | `u16 LE` | Status or fault word       | raw        |
 
-Status-word semantics remain tentative. See [battery
-expansions](../battery-expansions.md) for child-device behavior.
+Status-word semantics remain tentative. All five interpreted record values are
+diagnostic entities on the corresponding base/expansion child device. See
+[battery expansions](../battery-expansions.md) for child-device behavior.
