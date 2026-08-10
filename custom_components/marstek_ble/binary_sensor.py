@@ -1,12 +1,8 @@
 """Binary sensor platform for Marstek BLE integration."""
+
 from __future__ import annotations
 
-import logging
-
-from homeassistant.components.binary_sensor import (
-    BinarySensorDeviceClass,
-    BinarySensorEntity,
-)
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import CONNECTION_BLUETOOTH
@@ -16,8 +12,41 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import MarstekDataUpdateCoordinator
+from .product_entity_platform import (
+    EntityBinding,
+    EntityPlatform,
+    setup_product_entity_platform,
+)
 
-_LOGGER = logging.getLogger(__name__)
+_LEGACY_BINARY_SPECS = (
+    ("wifi_connected", "WiFi Connected", BinarySensorDeviceClass.CONNECTIVITY),
+    ("mqtt_connected", "MQTT Connected", BinarySensorDeviceClass.CONNECTIVITY),
+    ("out1_active", "Output 1 Active", BinarySensorDeviceClass.POWER),
+    ("extern1_connected", "External 1 Connected", BinarySensorDeviceClass.CONNECTIVITY),
+    ("smart_meter_connected", "Smart Meter Connected", BinarySensorDeviceClass.CONNECTIVITY),
+)
+
+
+def _setup_legacy_binary_sensors(
+    coordinator: MarstekDataUpdateCoordinator,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the historical flat Venus binary-sensor contract."""
+
+    async_add_entities(
+        [
+            MarstekBinarySensor(
+                coordinator,
+                entry,
+                key,
+                name,
+                lambda data, attribute=key: getattr(data, attribute),
+                device_class,
+            )
+            for key, name, device_class in _LEGACY_BINARY_SPECS
+        ]
+    )
 
 
 async def async_setup_entry(
@@ -26,58 +55,19 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Marstek BLE binary sensors from a config entry."""
-    coordinator: MarstekDataUpdateCoordinator = entry.runtime_data
 
-    entities = [
-        # Note: BLE Connected sensor removed - coordinator doesn't maintain persistent client connection
-        # TODO: Add proper connectivity tracking if needed
-        MarstekBinarySensor(
-            coordinator,
-            entry,
-            "wifi_connected",
-            "WiFi Connected",
-            lambda data: data.wifi_connected,
-            BinarySensorDeviceClass.CONNECTIVITY,
-            entity_category=EntityCategory.DIAGNOSTIC,
-        ),
-        MarstekBinarySensor(
-            coordinator,
-            entry,
-            "mqtt_connected",
-            "MQTT Connected",
-            lambda data: data.mqtt_connected,
-            BinarySensorDeviceClass.CONNECTIVITY,
-            entity_category=EntityCategory.DIAGNOSTIC,
-        ),
-        MarstekBinarySensor(
-            coordinator,
-            entry,
-            "out1_active",
-            "Output 1 Active",
-            lambda data: data.out1_active,
-            BinarySensorDeviceClass.POWER,
-            entity_category=EntityCategory.DIAGNOSTIC,
-        ),
-        MarstekBinarySensor(
-            coordinator,
-            entry,
-            "extern1_connected",
-            "External 1 Connected",
-            lambda data: data.extern1_connected,
-            BinarySensorDeviceClass.CONNECTIVITY,
-        ),
-        MarstekBinarySensor(
-            coordinator,
-            entry,
-            "smart_meter_connected",
-            "Smart Meter Connected",
-            lambda data: data.smart_meter_connected,
-            BinarySensorDeviceClass.CONNECTIVITY,
-            entity_category=EntityCategory.DIAGNOSTIC,
-        ),
-    ]
+    coordinator = entry.runtime_data
+    if not hasattr(coordinator, "product") and not hasattr(coordinator.data, "battery"):
+        _setup_legacy_binary_sensors(coordinator, entry, async_add_entities)
+        return
 
-    async_add_entities(entities)
+    setup_product_entity_platform(
+        coordinator,
+        entry,
+        async_add_entities,
+        EntityPlatform.BINARY_SENSOR,
+        MarstekBinarySensor,
+    )
 
 
 class MarstekBinarySensor(CoordinatorEntity, BinarySensorEntity):
@@ -87,39 +77,76 @@ class MarstekBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self,
         coordinator: MarstekDataUpdateCoordinator,
         entry: ConfigEntry,
-        key: str,
-        name: str,
-        value_fn,
+        key: str | EntityBinding,
+        name: str | None = None,
+        value_fn=None,
         device_class: BinarySensorDeviceClass | None = None,
         entity_category: EntityCategory | None = None,
     ) -> None:
-        """Initialize the binary sensor."""
+        """Initialize a declarative or legacy binary sensor."""
+
         super().__init__(coordinator)
-        self._key = key
-        self._attr_name = name
-        self._attr_has_entity_name = True
-        self._value_fn = value_fn
-        self._attr_device_class = device_class
-        self._attr_entity_category = entity_category
-        self._attr_unique_id = f"{entry.entry_id}_{key}"
+        self._binding: EntityBinding | None = key if isinstance(key, EntityBinding) else None
+        self._legacy_value_fn = value_fn
+
+        if self._binding is not None:
+            description = self._binding.description
+            self._key = self._binding.unique_key
+            self._attr_entity_description = description
+            self._attr_name = description.name
+            self._attr_has_entity_name = True
+            self._attr_device_class = getattr(description, "device_class", None)
+            self._attr_entity_category = getattr(description, "entity_category", None)
+        else:
+            self._key = key
+            self._attr_name = name
+            self._attr_has_entity_name = True
+            self._attr_device_class = device_class
+            self._attr_entity_category = entity_category
+
+        self._attr_unique_id = f"{entry.entry_id}_{self._key}"
 
     @property
     def available(self) -> bool:
-        """Return if entity is available."""
-        return super().available and self.coordinator.data is not None
+        """Return whether this entity and any repeated record are present."""
+
+        if not (super().available and self.coordinator.data is not None):
+            return False
+        return self._binding is None or self._binding.is_present(self.coordinator.data)
 
     @property
     def is_on(self) -> bool | None:
         """Return true if the binary sensor is on."""
-        return self._value_fn(self.coordinator.data)
+
+        if self._binding is not None:
+            return self._binding.value_from(self.coordinator.data)
+        return self._legacy_value_fn(self.coordinator.data)
 
     @property
     def device_info(self):
-        """Return device information."""
-        return {
-            "identifiers": {(DOMAIN, self.coordinator.ble_device.address)},
-            "connections": {(CONNECTION_BLUETOOTH, self.coordinator.ble_device.address)},
-            "name": self.coordinator.device_name,
-            "manufacturer": "Marstek",
-            "model": "Venus E",
+        """Return product-aware device information."""
+
+        if self._binding is None:
+            return {
+                "identifiers": {(DOMAIN, self.coordinator.ble_device.address)},
+                "connections": {
+                    (CONNECTION_BLUETOOTH, self.coordinator.ble_device.address)
+                },
+                "name": self.coordinator.device_name,
+                "manufacturer": "Marstek",
+                "model": "Venus E",
+            }
+
+        device = self._binding.device
+        main_identifier = self.coordinator.address
+        info = {
+            "identifiers": {(DOMAIN, device.identifier(main_identifier))},
+            "name": device.name or self.coordinator.device_name,
+            "manufacturer": device.manufacturer,
+            "model": device.model,
         }
+        if device.parent_key is None:
+            info["connections"] = {(CONNECTION_BLUETOOTH, main_identifier)}
+        else:
+            info["via_device"] = (DOMAIN, main_identifier)
+        return info

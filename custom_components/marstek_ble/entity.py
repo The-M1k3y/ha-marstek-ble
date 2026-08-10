@@ -1,6 +1,7 @@
 """Declarative Home Assistant entity and device planning.
 
-This module only describes entities. Existing platform modules do not use it yet.
+Sensor and binary-sensor platforms consume these bindings at runtime. Product
+profiles remain the source of entity metadata and repeated child-device topology.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ ValueGetter = Callable[[Any], Any]
 
 
 class EntityPlatform(StrEnum):
-    """Platforms represented by this scaffolding."""
+    """Platforms represented by product entity metadata."""
 
     SENSOR = "sensor"
     BINARY_SENSOR = "binary_sensor"
@@ -158,7 +159,7 @@ class EntityBinding:
 
 @dataclass(frozen=True, slots=True)
 class ExpansionChange:
-    """A topology increase that requires a reload or reconfiguration."""
+    """A detected increase in populated repeated product records."""
 
     path: DataPath
     configured_count: int
@@ -170,7 +171,7 @@ class ExpansionChange:
 
 @dataclass(frozen=True, slots=True)
 class EntityPlan:
-    """Frozen startup view of the configured devices and entities."""
+    """Frozen view of the currently configured devices and entities."""
 
     devices: tuple[DeviceBinding, ...]
     entities: tuple[EntityBinding, ...]
@@ -247,7 +248,7 @@ class ProductProfile:
         data: Any,
         plan: EntityPlan,
     ) -> tuple[ExpansionChange, ...]:
-        """Compare current repeated counts with the startup plan."""
+        """Compare current repeated counts with a previously generated plan."""
 
         changes: list[ExpansionChange] = []
         _find_increases(data, data, (), plan.repeated_counts, self.product_id, changes)

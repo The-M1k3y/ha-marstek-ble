@@ -1,23 +1,33 @@
 # Marstek BLE OKF update log
 
+## 2026-08-09
+
+- **Jupiter runtime**: Enabled Jupiter-C Plus as the `jupiter_c_plus` runtime product and added `MST_JPLS_*` Bluetooth discovery.
+- **Polling**: Added Jupiter-owned fast polling for `0x03`/`0x14` and medium polling for the observed `0x0D`, `0x08`, `0x22`, `0x21`, `0x24`, `0x04`, and `0x13` responses. Jupiter `0x1A` and `0x1C` remain unpolled because no response structure is retained in the sanitized source.
+- **Parsing**: Connected the declarative Jupiter binary schemas to the live protocol and added product-local parsers for `0x04` device information and `0x08` Wi-Fi SSID.
+- **Entities**: Connected sensor and binary-sensor platforms to `ProductProfile` plans. Jupiter now exposes its modeled PV, inverter, energy, BMS, and derived read-only entities without inheriting Venus field definitions.
+- **Battery topology**: Populated base/expansion battery records create stable positional child devices. New positions are added on later count increases; positions that disappear become unavailable without renumbering existing children.
+- **Controls**: Jupiter remains read-only. Venus button, switch, and select command semantics are not exposed for Jupiter.
+- **Compatibility**: Retained tracked Jupiter compatibility aliases and legacy entity constructors for transition/regression callers; canonical product bindings are now the live sensor path.
+- **Tests**: Added Jupiter runtime, dynamic entity-manager, and live declarative entity tests. Updated the existing runtime-registry test to verify that every declared discovery prefix resolves to an enabled runtime, including Jupiter-C Plus.
+
 ## 2026-08-08
 
 - **Venus runtime migration**: Connected the Venus declarative packet/dataclass model to the live integration through a generic product runtime and product-aware coordinator adapter.
 - **Product selection**: Added explicit runtime registration and persisted `product_id` selection for new config entries; legacy entries without a product ID retain the Venus fallback, while unknown persisted products are rejected.
 - **Polling**: Moved the Venus fast and medium command schedules out of the generic coordinator and into `VENUS_RUNTIME`.
 - **Parsing**: Fixed-layout Venus responses now use declarative field sources; Venus-specific text responses remain product-local custom parsers.
-- **State model**: The live Venus coordinator now stores nested `VenusData`. Temporary flat read/metadata aliases preserve compatibility with the not-yet-migrated Venus entity platforms.
-- **Product isolation**: Jupiter remains declarative-only and is deliberately excluded from the enabled runtime registry.
-- **Tests**: Added isolated tests for runtime registration, parsing, field metadata, poll dispatch, product selection, compatibility behavior, and failure/boundary cases; updated repository contracts and isolated Home Assistant stubs for the now-imported product metadata.
+- **State model**: The live Venus coordinator now stores nested `VenusData`. Temporary flat read/metadata aliases preserve compatibility during platform migration.
+- **Tests**: Added isolated tests for runtime registration, parsing, field metadata, poll dispatch, product selection, compatibility behavior, and failure/boundary cases.
 - **Declarative coverage tests**: Added direct tests for schema validation and failure paths, entity-plan topology and presence logic, and the declarative Jupiter runtime-summary, detailed-telemetry, event-history, repeated battery-pack, expansion, and derived-entity behavior.
-- **Coverage**: Removed the final Jupiter omission. Coverage now includes every Python source file under `custom_components/marstek_ble` and `standalone_test` with no file-level exceptions.
-- **Testing policy**: Added a dedicated testing-and-coverage OKF concept and updated `Agents.md` to prohibit coverage omissions and to use uncovered statements and branches as test-design input rather than exclusion criteria.
+- **Coverage**: Coverage includes every Python source file under `custom_components/marstek_ble` and `standalone_test` with no file-level exceptions.
+- **Testing policy**: Added a dedicated testing-and-coverage OKF concept and updated `Agents.md` to prohibit coverage omissions and use uncovered statements and branches as test-design input rather than exclusion criteria.
 
 ## 2026-08-05
 
 - **Architecture**: Added branch-only declarative packet, dataclass, entity-description, product-profile, repeated-record, and child-device scaffolding.
-- **Products**: Added declarative Venus and Jupiter-C Plus definitions without connecting them to the existing integration runtime.
-- **Expansions**: Added fixed-limit Jupiter battery-pack records, setup-time child-device planning, slot-based identifiers, runtime presence checks, and expansion-increase records for a future Home Assistant repair adapter.
+- **Products**: Added declarative Venus and Jupiter-C Plus definitions without connecting them to the integration runtime.
+- **Expansions**: Added fixed-limit Jupiter battery-pack records, setup-time child-device planning, slot-based identifiers, runtime presence checks, and expansion-increase records.
 - **Jupiter protocol**: Added a sanitized structural field map and progressive OKF hierarchy for runtime, event history, detailed telemetry, unresolved responses, and battery expansions.
 - **Privacy**: Prohibited committing raw captures, frames, payload hex, capture timestamps, identifiers, Wi-Fi names, observed values, counters, or event records.
 

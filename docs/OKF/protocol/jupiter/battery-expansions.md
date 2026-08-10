@@ -1,27 +1,26 @@
 ---
 type: Device Topology
 title: Jupiter-C Plus battery expansions
-description: Fixed-limit battery records, child-device identity, entity creation, runtime presence, and expansion-change repairs.
-tags: [jupiter, battery, expansion, child-device, repairs]
+description: Fixed-limit battery records, child-device identity, live entity creation, and runtime presence.
+tags: [jupiter, battery, expansion, child-device]
 status: draft
-source_revision: "17d3211e12989eb428681f5959707e9403e61bf6"
-generated: { by: openai/gpt-5.6-thinking, at: 2026-08-05T14:19:00Z }
+source_revision: "112abd322722b2e84bcdf34ee4b0325bf14b7313"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-09T10:50:00Z }
 sources:
   - id: model
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/17d3211e12989eb428681f5959707e9403e61bf6/custom_components/marstek_ble/products/jupiter.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/products/jupiter.py
     title: Jupiter battery child-device specification
   - id: entities
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/17d3211e12989eb428681f5959707e9403e61bf6/custom_components/marstek_ble/entity.py
-    title: Repeated entity planning and expansion-change detection
-  - id: sanitized-map
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/2cd631c99cf445d0526f450e1f7d5e55f5958178/docs/sources/jupiter-c-plus-ble-field-map.md
-    title: Sanitized Jupiter field map
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/entity.py
+    title: Repeated entity planning and presence bindings
+  - id: entity-runtime
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/product_entity_platform.py
+    title: Live repeated-entity synchronization
 ---
 
 # Packet topology
 
-Detailed telemetry contains a populated-pack count followed by four fixed 8-byte
-summary records:
+Detailed telemetry contains a populated-pack count followed by four fixed 8-byte summary records:
 
 | Index | Role                 | Payload offset |
 | ----: | -------------------- | -------------: |
@@ -30,23 +29,19 @@ summary records:
 |     2 | Expansion position 2 |         `0x8A` |
 |     3 | Expansion position 3 |         `0x92` |
 
-The in-memory list always contains four `JupiterBatteryPackData` instances. The
-reported count controls which records are present and which child devices are
-included in the setup-time entity plan.
+The in-memory list always contains four `JupiterBatteryPackData` instances. `pack_count` determines which positions are currently present.
 
-# Entity and device creation
+# Live entity creation
 
-The plan is built during setup, reload, or explicit reconfiguration. It creates
-the base battery and only the expansion positions reported as populated. Unused
-positions do not create empty Home Assistant devices or entities.
-
-Each configured child exposes the same entity set:
+The sensor platform creates child entities only for populated positions. Each child exposes:
 
 - highest-voltage cell index;
 - lowest-voltage cell index;
 - highest cell voltage;
 - lowest cell voltage; and
-- raw status or fault word.
+- raw status.
+
+`ProductEntityManager` rebuilds the declarative plan on coordinator updates and adds only previously unseen keys. If `pack_count` grows from two to three, only position 2 is added. No empty devices are created for unpopulated positions.
 
 # Stable identifiers
 
@@ -59,19 +54,10 @@ Child identifiers are slot-based and scoped below the main device:
 <main identifier>:battery_pack:3
 ```
 
-This identifies the position rather than a particular physical battery. A future
-serial number may be exposed as telemetry without changing these identifiers.
-Changing registry identifiers later would require an explicit migration.
+This identifies the physical position, not a specific battery serial number. A serial number could later be exposed as telemetry without changing registry identity.
 
-# Runtime changes and future repairs
+# Runtime decreases
 
-Every repeated child binding retains a presence condition. A decrease in the
-reported count can therefore make an already configured child unavailable
-without shifting another child's identity.
+Every repeated child binding retains a presence condition. If `pack_count` decreases, previously created entities for higher positions remain registered but become unavailable. Other batteries do not shift identities.
 
-`ProductProfile.detect_expansion_increases()` compares current telemetry with the
-startup plan. If the count increases, it returns an `ExpansionChange` with a
-stable issue ID and translation key. A future integration adapter can create a
-warning repair asking the user to reload or reconfigure the entry. Newly found
-children are created when the plan is rebuilt; the scaffolding does not modify
-the running entity set automatically.
+`ProductProfile.detect_expansion_increases()` remains available for future repair or notification UX, but runtime entity creation itself now handles newly populated positions without requiring a reload.

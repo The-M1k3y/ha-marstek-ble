@@ -1,102 +1,66 @@
 ---
 type: Software Architecture
 title: Declarative product, parsing, and entity model
-description: Product-specific packet schemas, cumulative dataclasses, runtime parsing, generated Home Assistant entity metadata, repeated records, and expansion topology.
+description: Product-specific packet schemas, cumulative dataclasses, runtime parsing, live Home Assistant entity metadata, repeated records, and expansion topology.
 tags: [architecture, dataclass, parsing, entities, products, expansions]
 status: draft
-source_revision: "48ab5b3f326ae34430af3a92b7e077c0a1b38772"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-08T11:00:00Z }
+source_revision: "112abd322722b2e84bcdf34ee4b0325bf14b7313"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-09T10:50:00Z }
 sources:
   - id: schema
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/schema.py
-    title: Declarative packet and dataclass parsing primitives
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/schema.py
+    title: Declarative packet parsing primitives
   - id: entities
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/entity.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/entity.py
     title: Entity metadata and topology planning
-  - id: runtime
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/product_runtime.py
-    title: Generic runtime adapter
-  - id: venus
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/products/venus.py
-    title: Venus product model
-  - id: venus-runtime
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/products/venus_runtime.py
-    title: Enabled Venus runtime
-  - id: jupiter
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/products/jupiter.py
-    title: Jupiter declarative model
+  - id: entity-runtime
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/product_entity_platform.py
+    title: Live entity synchronization
+  - id: jupiter-runtime
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/products/jupiter_runtime.py
+    title: Enabled Jupiter runtime adapter
 ---
 
 # Status
 
-The declarative model is now partially live. Venus uses the product-specific dataclasses, packet schemas, generic runtime parser, and product-owned polling schedule in the integration runtime. Jupiter remains declarative-only and is intentionally not registered as an enabled runtime.
+The declarative parsing and read-only entity model is live for both Venus and Jupiter-C Plus. Product dataclasses are the canonical state, packet schemas define binary parsing, runtimes own polling/custom parsing, and sensor/binary-sensor platforms consume generated `ProductProfile` entity bindings.
 
-The entity-planning layer is still scaffolding: the existing Home Assistant entity modules have not yet been replaced by generated `ProductProfile` entity plans.
+Venus write/control platforms remain legacy implementations. They are not loaded for Jupiter.
 
 # Single source of truth
 
-Each product model combines:
+Each product model combines packet schemas, nested cumulative state, and Home Assistant entity descriptions. A `FieldSource` normalizes one packet representation into the canonical field unit. Direct entity metadata is attached to the corresponding dataclass field; derived entities stay in profile metadata.
 
-1. packet schemas and field sources;
-2. nested dataclasses representing cumulative state; and
-3. Home Assistant entity descriptions attached to destination fields.
+# Runtime parsing
 
-A field may define one `FieldSource` per packet. Every source normalizes its raw representation to the field's canonical unit. Parsing updates only fields represented by the selected packet and leaves all others unchanged.
+`ProductProtocol` performs common Marstek frame validation and dispatches only to the selected `ProductRuntime`. Declarative parsing validates packet length and decodes matching fields before applying changes, avoiding partial updates on decoding failure.
 
-Direct entity metadata is attached to the same dataclass field as its packet sources. Derived entities remain profile metadata because they depend on multiple fields and should not be cached as mutable state.
-
-# Runtime adapter
-
-`ProductRuntime` binds one `ProductProfile` to runtime behavior that cannot be represented by fixed binary field metadata alone:
-
-- fast polling commands;
-- medium polling commands; and
-- optional command-specific payload parsers for text or otherwise irregular responses.
-
-`ProductProtocol` owns the common Marstek frame validation and dispatches the payload only to the selected runtime. Runtime products are registered explicitly, which prevents an unimplemented product from accidentally inheriting Venus command meanings.
-
-`PollCommand` carries a command byte, optional payload, and response-window delay. Poll schedules are therefore data owned by the product runtime rather than hard-coded coordinator branches.
-
-# Parsing
-
-`PacketSchema` validates command-specific payload lengths. `FieldSource` defines an offset, explicit byte order, `struct` format, optional length gates, and a converter. Declarative parsing decodes all matching fields before applying updates, so a decoding error cannot leave the data object partially modified.
-
-Nested dataclasses are traversed recursively. `RepeatedSectionSource` adds a base offset and stride for fixed-limit repeated records. Parsed paths retain list indices, for example:
+Repeated binary records retain indexed canonical paths such as:
 
 ```text
-battery.packs.1.highest_cell_voltage
 pv_inputs.3.power
+battery.packs.1.highest_cell_voltage
 ```
 
-The enabled Venus runtime uses these paths for source timestamp/staleness metadata. It also exposes temporary flat metadata aliases required by the existing entity implementation.
+Jupiter's runtime adds custom parsing for `0x04` key/value device information and the variable-length `0x08` SSID response. `RuntimeJupiterData` also retains compatibility aliases for older callers, but live declarative entities read canonical bindings.
 
-# Venus migration state
+# Live entity plans
 
-`VenusData` is the canonical live coordinator snapshot. It contains nested runtime, battery, system, timer, configuration, device-information, and network sections.
+`ProductProfile.build_entity_plan()` recursively produces:
 
-Fixed-layout responses are parsed from the dataclass field metadata. Venus-specific text responses remain in `products/venus_runtime.py`, including device information, Wi-Fi SSID, meter IP, network information, and local API status.
+- main and child-device bindings;
+- sensor and binary-sensor bindings;
+- direct or derived value accessors;
+- canonical staleness paths;
+- stable product-local entity keys; and
+- repeated-record presence conditions.
 
-The existing entity/control modules still expect flat attributes. `VenusData` therefore provides temporary read-only flat aliases such as `battery_soc` and `wifi_connected`. New runtime code should use the nested canonical paths instead; the compatibility aliases are intended to disappear after the entity platforms migrate.
+The sensor and binary-sensor platforms consume this plan through `ProductEntityManager`. Fixed entities are added immediately. When a repeated record count later increases, a fresh plan contributes only entity keys that have not already been created.
 
-# Entity planning
+# Jupiter topology
 
-`ProductProfile.build_entity_plan()` recursively discovers field metadata and returns an immutable startup plan containing:
+Jupiter exposes four fixed PV input records as entities on the main device. Its BMS section contains four fixed battery-pack slots controlled by the reported `pack_count`.
 
-- device bindings;
-- entity bindings;
-- direct paths or derived-value functions;
-- stale-data dependencies;
-- stable product-local unique keys; and
-- configured repeated-record counts.
+Populated battery slots become child devices with stable positional identifiers. Each exposes the modeled highest/lowest cell indices, highest/lowest cell voltages, and raw status. A decrease in `pack_count` does not rename or delete an existing binding; its presence condition makes it unavailable. A later increase adds only newly populated slots.
 
-Indexed scalar expansion creates several entities from one sequence on the same device, such as Venus cell voltages. Repeated nested dataclasses represent records containing several values, such as Jupiter battery summaries.
-
-This entity plan is not yet used by the live Home Assistant platform modules.
-
-# Child devices and expansion discovery
-
-A repeated section may define `RepeatedChildDeviceSpec`. The startup plan then creates one child-device binding per populated record. Jupiter uses position indices for the base battery and up to three expansion slots.
-
-The plan snapshots the count during setup or explicit reconfiguration. Existing bindings include a runtime presence predicate, so a later decrease can make a child unavailable without shifting identities.
-
-`detect_expansion_increases()` compares later telemetry with the startup plan and returns `ExpansionChange` records. A future integration adapter can convert these into Home Assistant repairs requesting a reload or reconfiguration. Jupiter runtime parsing, child-device creation, and repairs remain unwired.
+`detect_expansion_increases()` remains available as topology-analysis infrastructure, but live entity synchronization no longer requires a reload merely to add newly reported battery slots. A future repair flow may still be useful for explicit user notification or reconfiguration policy.

@@ -33,6 +33,16 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
     Platform.SELECT,
 ]
+READ_ONLY_PLATFORMS: list[Platform] = [
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+]
+
+
+def _platforms_for_product(product_id: str) -> list[Platform]:
+    """Return only platforms whose command semantics are valid for a product."""
+
+    return PLATFORMS if product_id == VENUS_RUNTIME.product_id else READ_ONLY_PLATFORMS
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -126,7 +136,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "product_id": product.product_id,
     }
 
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(
+        entry, _platforms_for_product(product.product_id)
+    )
 
     return True
 
@@ -150,8 +162,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 err,
             )
 
+    product_id = domain_data.get("product_id") if domain_data else None
+    if product_id is None and coordinator is not None:
+        product = getattr(coordinator, "product", None)
+        product_id = getattr(product, "product_id", None)
+    if product_id is None:
+        product_id = entry.data.get(
+            CONF_PRODUCT_ID, VENUS_RUNTIME.product_id
+        )
+
     unload_ok = await hass.config_entries.async_unload_platforms(
-        entry, PLATFORMS
+        entry, _platforms_for_product(product_id)
     )
 
     if unload_ok:

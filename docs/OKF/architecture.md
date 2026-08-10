@@ -1,155 +1,82 @@
 ---
 type: Software Architecture
 title: Marstek BLE runtime architecture
-description: Product selection, polling, BLE lifecycle, product-specific parsing, state propagation, diagnostics, and remaining migration boundaries.
+description: Product selection, polling, BLE lifecycle, product-specific parsing, declarative entities, and capability boundaries.
 tags: [architecture, coordinator, polling, bluetooth, multi-product]
 status: draft
-source_revision: "48ab5b3f326ae34430af3a92b7e077c0a1b38772"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-08T11:00:00Z }
+source_revision: "112abd322722b2e84bcdf34ee4b0325bf14b7313"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-09T10:50:00Z }
 sources:
   - id: init
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/__init__.py
-    title: Integration setup and product selection
-  - id: config-flow
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/config_flow.py
-    title: Discovery and persisted product selection
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/__init__.py
+    title: Integration setup and platform capabilities
   - id: coordinator
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/product_coordinator.py
-    title: Product-aware coordinator adapter
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/product_coordinator.py
+    title: Product-aware coordinator
   - id: runtime
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/product_runtime.py
-    title: Generic product runtime and frame parser
-  - id: venus-runtime
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/products/venus_runtime.py
-    title: Venus parsing and polling runtime
-  - id: venus-data
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/products/venus.py
-    title: Venus nested dataclasses and packet schemas
-  - id: device
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/48ab5b3f326ae34430af3a92b7e077c0a1b38772/custom_components/marstek_ble/marstek_device.py
-    title: Shared BLE transport and legacy Venus parser
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/product_runtime.py
+    title: Product runtime and protocol dispatcher
+  - id: entities
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/product_entity_platform.py
+    title: Live declarative entity synchronization
+  - id: jupiter-runtime
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/products/jupiter_runtime.py
+    title: Jupiter runtime
 ---
 
 # Runtime data flow
 
 ```text
-Home Assistant Bluetooth discovery
-        │
-        ▼
-Config entry (`address`, name, `product_id`, polling options)
-        │
-        ▼
-Enabled ProductRuntime registry
-        │
-        ▼
-ProductDataUpdateCoordinator
-        │ owns
-        ├── MarstekBLEDevice ── shared BLE transport
-        │
-        ├── ProductProtocol ─── frame validation and runtime dispatch
-        │
-        └── ProductRuntime ──── packet schemas + poll schedule
-                                  │
-                                  ▼
-                         product-specific data
-                         (`VenusData` today)
-                                  │
-                                  ▼
-                       CoordinatorEntity platforms
+Bluetooth discovery
+  -> config entry + product_id
+  -> ProductRuntime registry
+  -> ProductDataUpdateCoordinator
+       -> MarstekBLEDevice transport
+       -> ProductProtocol frame validation
+       -> product-specific parser/poll schedule
+  -> product-specific cumulative data
+  -> ProductProfile entity plan
+  -> sensor / binary_sensor entities
 ```
 
-The live integration now selects an explicit product runtime. New config entries persist the selected `product_id`; entries created before this migration have no product ID and retain a Venus fallback for compatibility. A persisted unknown product ID is rejected instead of being interpreted as Venus.[^init][^config-flow]
+Venus and Jupiter-C Plus are explicitly registered runtime products. New entries persist a product ID; legacy entries without one retain the Venus fallback. Unknown persisted product IDs are rejected.
 
-Only the Venus runtime is enabled. The Jupiter declarative model remains separate scaffolding and is intentionally absent from the runtime registry.
+# Polling
 
-# Coordinator and BLE transport boundary
+Venus keeps its product-specific schedule. Jupiter uses only response structures retained in the sanitized Jupiter source.
 
-`ProductDataUpdateCoordinator` subclasses the existing coordinator to reuse scheduling, backoff, polling locks, availability handling, and the persistent `MarstekBLEDevice`. It replaces only the product-dependent pieces:
+| Cadence | Jupiter commands |
+| ------- | ---------------- |
+| Fast    | `0x03`, `0x14`   |
+| Medium  | `0x0D`, `0x08`, `0x22`, `0x21` with payload `0x0B`, `0x24`, `0x04`, `0x13` |
 
-- cumulative data object;
-- notification protocol/parser; and
-- fast and medium command schedules.[^coordinator]
+Jupiter does not poll `0x1A` or `0x1C`, because no Jupiter response structure for those commands is retained in the approved source.
 
-`MarstekBLEDevice` remains the shared transport. It owns connection establishment, notification subscription, command serialization, response waiting, retry behavior, diagnostics history, and disconnect handling.[^device]
+# Parsing and state
 
-The old flat `MarstekData` and `MarstekProtocol` remain in `marstek_device.py` for compatibility and regression coverage, but config-entry setup no longer uses them as the live coordinator state/parser.
+`ProductProtocol` validates the common frame structure and dispatches the payload only to the selected runtime. Fixed binary packets use declarative field metadata. Irregular text packets remain product-local custom parsers.
 
-# Venus polling
+Venus stores nested `VenusData`; Jupiter stores `RuntimeJupiterData`. Jupiter additionally parses comma-separated `0x04` identity/version data and variable-length `0x08` Wi-Fi SSID data. Compatibility aliases remain available for regression/transition code, but live sensor creation now reads canonical `ProductProfile` bindings.
 
-The enabled Venus runtime defines the same polling schedule previously embedded in the coordinator.[^venus-runtime]
+# Entity and device creation
 
-## Fast poll
+`sensor.py` and `binary_sensor.py` consume `ProductProfile.build_entity_plan()`. Fixed entities are created immediately. Repeated Jupiter battery-pack entities are created when the reported pack count makes the corresponding slot present.
 
-At every configured fast interval:
+A `ProductEntityManager` listens for later coordinator updates. If the pack count increases, only the newly available child bindings are added. Existing child bindings are never renumbered. If the count decreases, their presence condition makes the removed slot unavailable without shifting identities.
 
-1. runtime information (`0x03`), delay `0.1 s`;
-2. BMS data (`0x14`), delay `0.1 s`.
+Jupiter battery child identifiers are positional and stable:
 
-## Medium poll
+```text
+<main BLE identifier>:battery_pack:0
+<main BLE identifier>:battery_pack:1
+<main BLE identifier>:battery_pack:2
+<main BLE identifier>:battery_pack:3
+```
 
-On the first cycle and then every calculated medium cycle:
+This exposes the modeled per-PV entities and populated base/expansion battery entities through Home Assistant.
 
-1. system data (`0x0D`),
-2. Wi-Fi SSID (`0x08`),
-3. configuration data (`0x1A`),
-4. CT polling rate (`0x22`),
-5. meter IP (`0x21`) with payload `0x0B`,
-6. network information (`0x24`),
-7. device information (`0x04`),
-8. timer information (`0x13`),
-9. local API status (`0x28`), and
-10. logs (`0x1C`).
+# Capability boundary
 
-`0x1C` is still polled but has no enabled Venus payload parser, so it does not update the cumulative data snapshot.
+Venus loads sensor, binary-sensor, button, switch, and select platforms. Jupiter loads only sensor and binary-sensor platforms. Venus write/control command semantics are not assumed to apply to Jupiter.
 
-# Product-specific parsing and state
-
-`ProductProtocol` performs common Marstek frame validation: minimum frame size, start/type bytes, declared frame length, and XOR checksum. It then dispatches the payload to the selected `ProductRuntime`.[^runtime]
-
-Fixed binary Venus packets use the declarative `PacketSchema` / `FieldSource` traversal. Text-like packets that require key/value parsing use Venus-specific payload functions. These parsers remain in the Venus runtime rather than the generic protocol layer so identical command bytes on another product do not imply identical semantics.[^venus-runtime]
-
-The canonical live Venus snapshot is `VenusData`, composed of nested sections:
-
-- `runtime`;
-- `battery`;
-- `system`;
-- `timer`;
-- `configuration`;
-- `device`; and
-- `network`.[^venus-data]
-
-Updates record canonical data paths such as `battery.battery_soc` together with source-command/timestamp metadata. The Venus data class temporarily exposes flat read aliases such as `battery_soc` and legacy metadata aliases, allowing the existing entity/control modules to keep working while those platforms are migrated separately. These aliases are compatibility surfaces, not the canonical product model.
-
-# Product selection and future products
-
-Runtime-enabled products are registered explicitly. Product selection has two stages:
-
-1. discovery maps an advertised local name to an enabled runtime and persists its stable product ID;
-2. setup resolves that ID back to the runtime before creating the coordinator.[^config-flow][^init]
-
-Adding another runtime therefore requires an explicit registry entry and product-specific discovery support; it must not inherit Venus parsing or polling merely because command numbers overlap. Discovery patterns, protocol schemas, poll commands, device metadata, capabilities, entity topology, and expansion limits remain product concerns.
-
-# Remaining migration boundaries
-
-The following surfaces are intentionally not generalized by this change:
-
-- Home Assistant entity platform declarations are still the existing Venus definitions and consume the temporary flat compatibility reads;
-- control command constants and platform implementations remain Venus-oriented;
-- Jupiter remains declarative-only and is not enabled at runtime;
-- the old Venus parser/data classes remain for compatibility and regression tests.
-
-A later platform migration should consume `ProductProfile` entity/capability metadata directly and then remove the flat Venus compatibility layer when no callers depend on it.
-
-# Diagnostics and failure handling
-
-The inherited coordinator still serializes poll cycles with one lock, continues later poll commands after individual failures, and applies the existing module-global backoff behavior. The BLE device still retains command/notification histories and per-command statistics.[^coordinator][^device]
-
-Diagnostics serialize the coordinator data object. For the live Venus coordinator this is now the nested `VenusData` structure rather than the old flat snapshot. Existing redaction still applies recursively to sensitive keys.
-
-[^init]: Integration setup and product selection.
-[^config-flow]: Discovery and persisted product selection.
-[^coordinator]: Product-aware coordinator adapter plus inherited scheduling behavior.
-[^runtime]: Generic product runtime and frame parser.
-[^venus-runtime]: Venus runtime parser and polling schedule.
-[^venus-data]: Venus product dataclasses and packet definitions.
-[^device]: Shared BLE transport and retained legacy parser implementation.
+The remaining multi-product migration work is primarily on write/control capabilities and optional repair UX; the declarative read-only entity layer is live.

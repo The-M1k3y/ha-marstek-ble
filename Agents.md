@@ -98,7 +98,7 @@ Do not invent `verified` events. A human review must be represented by a real
 
 ## Multi-product changes
 
-Before integrating another product, identify and isolate the current Venus
+Before integrating another product, identify and isolate the current product
 coupling points documented in `docs/OKF/architecture.md`: discovery patterns,
 model metadata, protocol/parser selection, poll schedules, capabilities, field
 schemas, entity definitions, and cell or expansion limits.
@@ -107,10 +107,13 @@ Prefer explicit product profiles and strategies over command-number conditionals
 spread across entity platforms. Entity and control creation must be
 capability-aware so unsupported fields do not appear as valid stale data.
 
-The branch-only declarative model under `custom_components/marstek_ble/schema.py`,
-`entity.py`, and `products/` is not connected to the existing integration yet.
-Do not silently wire it into existing source files unless the requested task
-explicitly includes that integration step.
+The declarative model under `custom_components/marstek_ble/schema.py`,
+`entity.py`, and `products/` is connected to the live sensor and binary-sensor
+platforms. Extend read-only product entities through product-profile metadata and
+the shared entity-plan infrastructure rather than adding product-specific entity
+lists to platform modules. Venus currently remains the only product with enabled
+write/control platforms; do not expose those controls for another product unless
+its command semantics are explicitly validated.
 
 ## Unit-test discipline
 
