@@ -1,5 +1,13 @@
 # Marstek BLE OKF update log
 
+## 2026-08-10
+
+- **Battery state**: Reclassified Jupiter `0x03` offset `0x12` from a boolean charging flag to a three-state field: `0` idle, `1` charging, and `2` discharging. Unknown raw values remain unresolved.
+- **Entities**: Replaced the misleading `Battery Charging Active` binary entity with a `Battery State` sensor and removed the redundant battery-power-derived charging binary sensor. The signed `Battery Power` sensor remains available.
+- **Grid telemetry**: Withdrew the `Grid Current` entity because controlled Jupiter behavior contradicted the previous interpretation of `0x14` offset `0x08`; the field remains available internally for further protocol investigation.
+- **Display metadata**: Set grid frequency to two suggested decimal places and renamed the identity sensor to `Bluetooth MAC Address`.
+- **Tests**: Added regression coverage for all verified battery-state values, unknown-state handling, removed charging binaries, grid-current suppression, frequency precision, and Bluetooth MAC naming.
+
 ## 2026-08-09
 
 - **Jupiter runtime**: Enabled Jupiter-C Plus as the `jupiter_c_plus` runtime product and added `MST_JPLS_*` Bluetooth discovery.
