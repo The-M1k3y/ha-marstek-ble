@@ -4,14 +4,14 @@ title: Jupiter-C Plus 0x03 runtime summary
 description: Sanitized runtime response fields for PV inputs, output, battery state, energy counters, and firmware versions.
 tags: [jupiter, ble, telemetry, runtime]
 status: draft
-source_revision: "4a91e24a21a63171cfbffad4111b8caf5d25432c"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T11:57:00Z }
+source_revision: "b36eb35ef33813f888c33c4d68cb1fdb370d109b"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T12:29:00Z }
 sources:
   - id: sanitized-map
     resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/86ba4672a94059ccb11f10258f33fd4bde53ef27/docs/sources/jupiter-c-plus-ble-field-map.md
     title: Sanitized Jupiter field map
   - id: model
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/4a91e24a21a63171cfbffad4111b8caf5d25432c/custom_components/marstek_ble/products/jupiter.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/b36eb35ef33813f888c33c4d68cb1fdb370d109b/custom_components/marstek_ble/products/jupiter.py
     title: Declarative Jupiter model
 ---
 
@@ -58,6 +58,13 @@ The `Strong` daily and monthly PV-generation counters and the `Tentative`
 operational-status bitfield are exposed as diagnostic sensors while their
 interpretations remain under observation. Unknown byte ranges with no current
 semantic hypothesis remain unexposed.
+
+Operational-status bit 1 has a current tentative interpretation as surplus
+feed-in activity. It is additionally exposed as the binary sensor `Surplus
+Feed-In Active Unverified`. The `Unverified` suffix is intentional because the
+correlation has not yet been validated by a dedicated controlled test. Other
+bits in this byte remain raw-only until they have a sufficiently specific
+interpretation.
 
 The stored-energy, state-of-charge, generation, discharge, and firmware fields
 share canonical destinations with more precise or duplicate fields in `0x14`.
