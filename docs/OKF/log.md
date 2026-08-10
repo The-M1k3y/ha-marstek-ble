@@ -2,6 +2,12 @@
 
 ## 2026-08-10
 
+- **Grid validity**: Reclassified Jupiter `0x03` offset `0x0E` from `AC Output Active` to `Grid Connection Valid`. Controlled zero-output, grid-loss, and grid-return behavior shows that it represents a qualified grid connection rather than output power or raw voltage presence.
+- **Inverter errors**: Identified Jupiter `0x03` offsets `0x23–0x24` as the same little-endian inverter error code exposed at `0x14` offset `0x02`. A controlled grid disconnect produced transient `0x040A` followed by persistent `0x0426`; the numeric mapping is confirmed while the tentative semantic labels remain `overfrequency` and `island / anti-islanding detection` respectively.
+- **Event history**: Reclassified the final two bytes of each Jupiter `0x13` record from separate event-value/state bytes to one `u16 LE` event/error identifier. The persistent grid-loss inverter error was written unchanged into a new event record, providing a controlled correlation.
+- **Inverter state**: Refined `0x14` inverter state flags as grid/inverter qualification state. They can remain clear after voltage and frequency measurements return, so they are not direct output-power or voltage-presence flags.
+- **Entities**: Replaced the misleading `AC Output Active` binary entity with `Grid Connection Valid`; compatibility access to the previous field name remains internal for transition callers.
+- **Tests**: Added regression coverage for grid validity, the runtime-summary inverter-error mirror, the 16-bit event-code interpretation, and the new binary-sensor contract. Test execution was explicitly delegated to the repository owner for this change set.
 - **Battery state**: Reclassified Jupiter `0x03` offset `0x12` from a boolean charging flag to a three-state field: `0` idle, `1` charging, and `2` discharging. Unknown raw values remain unresolved.
 - **Entities**: Replaced the misleading `Battery Charging Active` binary entity with a `Battery State` sensor and removed the redundant battery-power-derived charging binary sensor. The signed `Battery Power` sensor remains available.
 - **Grid telemetry**: Withdrew the `Grid Current` entity because controlled Jupiter behavior contradicted the previous interpretation of `0x14` offset `0x08`; the field remains available internally for further protocol investigation.
