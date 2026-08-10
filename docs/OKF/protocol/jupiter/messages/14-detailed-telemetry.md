@@ -4,14 +4,14 @@ title: Jupiter-C Plus 0x14 detailed telemetry
 description: Inverter, grid, MPPT, PV-input, battery, and repeated battery-pack response layout.
 tags: [jupiter, ble, telemetry, inverter, mppt, bms]
 status: draft
-source_revision: "17d3211e12989eb428681f5959707e9403e61bf6"
-generated: { by: openai/gpt-5.6-thinking, at: 2026-08-05T14:19:00Z }
+source_revision: "863e113761b0b3d589fa727728307c2c0f4d58e2"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T11:15:00Z }
 sources:
   - id: sanitized-map
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/2cd631c99cf445d0526f450e1f7d5e55f5958178/docs/sources/jupiter-c-plus-ble-field-map.md
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/86ba4672a94059ccb11f10258f33fd4bde53ef27/docs/sources/jupiter-c-plus-ble-field-map.md
     title: Sanitized Jupiter field map
   - id: model
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/17d3211e12989eb428681f5959707e9403e61bf6/custom_components/marstek_ble/products/jupiter.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/863e113761b0b3d589fa727728307c2c0f4d58e2/custom_components/marstek_ble/products/jupiter.py
     title: Declarative Jupiter model
 ---
 
@@ -22,16 +22,24 @@ offset-ordered structural table is maintained in the [sanitized source
 map](../../../../sources/jupiter-c-plus-ble-field-map.md). This concept groups
 that structure by contiguous byte range without changing field order.
 
-| Range         | Structure                                      |
-| ------------- | ---------------------------------------------- |
-| `0x00–0x1F`   | Inverter state, errors, grid values, output, temperature, and discharge counters |
-| `0x20–0x27`   | MPPT state, errors, temperature, and warnings  |
-| `0x28–0x3F`   | Four PV inputs, each voltage/current/power     |
-| `0x40–0x4F`   | PV generation counters and one unknown range  |
-| `0x50–0x57`   | MPPT DC output plus tentative base/PE voltages |
-| `0x58–0x79`   | Battery limits, state, capacity, electrical values, diagnostics, pack count, and stored energy |
-| `0x7A–0x99`   | Four repeated 8-byte battery-pack summaries   |
-| `0x9A–0xA5`   | Battery, environment, and MOSFET temperatures |
+| Range       | Structure                                                               |
+| ----------- | ----------------------------------------------------------------------- |
+| `0x00–0x1F` | Inverter state, errors, grid values, output, temperature, and discharge counters |
+| `0x20–0x27` | MPPT state, errors, temperature, and warnings                           |
+| `0x28–0x3F` | Four PV inputs, each voltage/current/power                              |
+| `0x40–0x4F` | PV generation counters and one unknown range                           |
+| `0x50–0x57` | MPPT DC output plus tentative base/PE voltages                          |
+| `0x58–0x79` | Battery limits, state, capacity, electrical values, diagnostics, pack count, and stored energy |
+| `0x7A–0x99` | Four repeated 8-byte battery-pack summaries                            |
+| `0x9A–0xA5` | Battery, environment, and MOSFET temperatures                          |
+
+# Inverter field at `0x08`
+
+The two-byte field at `0x08` was previously interpreted as grid current.
+Controlled Jupiter observations showed it remaining zero while grid voltage and
+AC output power were non-zero. Its semantics and scale are therefore unresolved.
+The integration retains the field internally for future investigation but no
+longer exposes it as a Home Assistant `Grid Current` sensor.
 
 # Multiple packet sources
 
