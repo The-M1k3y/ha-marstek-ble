@@ -88,7 +88,7 @@ mutation-browse:
 # Upload the integration source to the configured Home Assistant instance.
 ha-upload:
     @test -f "{{ha_deploy_config}}" || { echo "Missing {{ha_deploy_config}}; copy {{ha_deploy_config}}.example and edit it." >&2; exit 1; }
-    @source "{{ha_deploy_config}}"; : "${HA_SSH_TARGET:?HA_SSH_TARGET is required}" "${HA_SSH_PORT:?HA_SSH_PORT is required}" "${HA_CONFIG_DIR:?HA_CONFIG_DIR is required}"; ssh -p "$HA_SSH_PORT" "$HA_SSH_TARGET" "mkdir -p '$HA_CONFIG_DIR/custom_components/marstek_ble'"; rsync -az --delete -e "ssh -p $HA_SSH_PORT" custom_components/marstek_ble/ "$HA_SSH_TARGET:$HA_CONFIG_DIR/custom_components/marstek_ble/"
+    @source "{{ha_deploy_config}}"; : "${HA_SSH_TARGET:?HA_SSH_TARGET is required}" "${HA_SSH_PORT:?HA_SSH_PORT is required}" "${HA_CONFIG_DIR:?HA_CONFIG_DIR is required}"; tar -C custom_components -cf - marstek_ble | ssh -p "$HA_SSH_PORT" "$HA_SSH_TARGET" "set -eu; rm -rf '$HA_CONFIG_DIR/custom_components/marstek_ble'; mkdir -p '$HA_CONFIG_DIR/custom_components'; tar -xf - -C '$HA_CONFIG_DIR/custom_components'"
 
 # Restart Home Assistant Core using the configured remote command.
 ha-restart:
