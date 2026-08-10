@@ -4,15 +4,15 @@
 # This file is sourced by Bash. Keep credentials such as SSH private keys outside
 # this file and use the normal OpenSSH configuration/agent for authentication.
 
-# SSH destination used by both rsync and ssh. This may also be a Host alias from
-# ~/.ssh/config.
+# SSH destination used for both uploading and restarting. This may also be a Host
+# alias from ~/.ssh/config.
 HA_SSH_TARGET="root@ha-dev.example.net"
 
 # SSH port exposed by the Home Assistant host or SSH add-on.
 HA_SSH_PORT="22"
 
 # Home Assistant configuration directory. The integration is uploaded to
-# <HA_CONFIG_DIR>/custom_components/marstek_ble/.
+# <HA_CONFIG_DIR>/custom_components/marstek_ble/ using a tar stream over SSH.
 HA_CONFIG_DIR="/config"
 
 # Command executed on the remote host to restart Home Assistant Core.
