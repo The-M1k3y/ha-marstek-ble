@@ -224,7 +224,6 @@ def test_jupiter_event_history_is_twenty_fixed_records() -> None:
     assert data.events[1].event_value == 9
 
 
-@pytest.mark.known_issue
 def test_jupiter_runtime_summary_decodes_battery_state_values() -> None:
     expected = (
         (0, "idle", False),
@@ -243,7 +242,6 @@ def test_jupiter_runtime_summary_decodes_battery_state_values() -> None:
         assert data.runtime.battery_charging_active is charging_active
 
 
-@pytest.mark.known_issue
 def test_jupiter_entity_plan_uses_verified_state_and_display_metadata() -> None:
     data = JUPITER_RUNTIME.create_data()
     plan = JUPITER_RUNTIME.profile.build_entity_plan(data)
