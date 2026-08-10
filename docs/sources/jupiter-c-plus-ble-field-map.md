@@ -33,36 +33,40 @@ little-endian unless stated otherwise.
 
 ## `0x03` runtime summary
 
-| Offset | Length | Type          | Name                      | Unit / scale | Confidence |
-| -----: | -----: | ------------- | ------------------------- | ------------ | ---------- |
-| `0x00` |      2 | `u16 LE`      | PV input 1 power          | W            | Confirmed  |
-| `0x02` |      1 | `u8 / bool`   | PV input 1 connected      | boolean      | Confirmed  |
-| `0x03` |      2 | `u16 LE`      | PV input 2 power          | W            | Confirmed  |
-| `0x05` |      1 | `u8 / bool`   | PV input 2 connected      | boolean      | Confirmed  |
-| `0x06` |      2 | `u16 LE`      | PV input 3 power          | W            | Confirmed  |
-| `0x08` |      1 | `u8 / bool`   | PV input 3 connected      | boolean      | Confirmed  |
-| `0x09` |      2 | `u16 LE`      | PV input 4 power          | W            | Confirmed  |
-| `0x0B` |      1 | `u8 / bool`   | PV input 4 connected      | boolean      | Confirmed  |
-| `0x0C` |      2 | `u16 LE`      | AC/grid output power      | W            | Confirmed  |
-| `0x0E` |      1 | `u8 / bool`   | AC/grid output active     | boolean      | Confirmed  |
-| `0x0F` |      3 | unknown       | unknown                   | —            | —          |
-| `0x12` |      1 | `u8 / bool`   | Battery charging active   | boolean      | Confirmed  |
-| `0x13` |      2 | `u16 LE`      | Stored battery energy     | 10 Wh        | Confirmed  |
-| `0x15` |      1 | `u8`          | Battery state of charge   | %            | Confirmed  |
-| `0x16` |      1 | `u8`          | EMS firmware summary      | raw version  | Confirmed  |
-| `0x17` |      4 | `u32 LE`      | Daily PV generation       | 0.01 kWh     | Strong     |
-| `0x1B` |      4 | `u32 LE`      | Monthly PV generation     | 0.01 kWh     | Strong     |
-| `0x1F` |      4 | `u32 LE`      | Total PV generation       | 0.01 kWh     | Confirmed  |
-| `0x23` |      4 | unknown       | unknown                   | —            | —          |
-| `0x27` |      4 | `u32 LE`      | Daily discharge energy    | 0.01 kWh     | Confirmed  |
-| `0x2B` |      4 | `u32 LE`      | Monthly discharge energy  | 0.01 kWh     | Confirmed  |
-| `0x2F` |      2 | `u16 LE`      | EMS firmware version      | raw version  | Confirmed  |
-| `0x31` |      2 | `u16 LE`      | Inverter firmware version | raw version  | Confirmed  |
-| `0x33` |      2 | `u16 LE`      | MPPT firmware version     | raw version  | Confirmed  |
-| `0x35` |      2 | `u16 LE`      | BMS firmware version      | raw version  | Confirmed  |
-| `0x37` |      5 | unknown       | unknown                   | —            | —          |
-| `0x3C` |      1 | `u8 bitfield` | Operational status        | raw          | Tentative  |
-| `0x3D` |     13 | unknown       | unknown                   | —            | —          |
+| Offset | Length | Type          | Name                      | Unit / scale                         | Confidence |
+| -----: | -----: | ------------- | ------------------------- | ------------------------------------ | ---------- |
+| `0x00` |      2 | `u16 LE`      | PV input 1 power          | W                                    | Confirmed  |
+| `0x02` |      1 | `u8 / bool`   | PV input 1 connected      | boolean                              | Confirmed  |
+| `0x03` |      2 | `u16 LE`      | PV input 2 power          | W                                    | Confirmed  |
+| `0x05` |      1 | `u8 / bool`   | PV input 2 connected      | boolean                              | Confirmed  |
+| `0x06` |      2 | `u16 LE`      | PV input 3 power          | W                                    | Confirmed  |
+| `0x08` |      1 | `u8 / bool`   | PV input 3 connected      | boolean                              | Confirmed  |
+| `0x09` |      2 | `u16 LE`      | PV input 4 power          | W                                    | Confirmed  |
+| `0x0B` |      1 | `u8 / bool`   | PV input 4 connected      | boolean                              | Confirmed  |
+| `0x0C` |      2 | `u16 LE`      | AC/grid output power      | W                                    | Confirmed  |
+| `0x0E` |      1 | `u8 / bool`   | AC/grid output active     | boolean                              | Confirmed  |
+| `0x0F` |      3 | unknown       | unknown                   | —                                    | —          |
+| `0x12` |      1 | `u8 state`    | Battery state             | 0 idle, 1 charging, 2 discharging    | Confirmed  |
+| `0x13` |      2 | `u16 LE`      | Stored battery energy     | 10 Wh                                | Confirmed  |
+| `0x15` |      1 | `u8`          | Battery state of charge   | %                                    | Confirmed  |
+| `0x16` |      1 | `u8`          | EMS firmware summary      | raw version                          | Confirmed  |
+| `0x17` |      4 | `u32 LE`      | Daily PV generation       | 0.01 kWh                             | Strong     |
+| `0x1B` |      4 | `u32 LE`      | Monthly PV generation     | 0.01 kWh                             | Strong     |
+| `0x1F` |      4 | `u32 LE`      | Total PV generation       | 0.01 kWh                             | Confirmed  |
+| `0x23` |      4 | unknown       | unknown                   | —                                    | —          |
+| `0x27` |      4 | `u32 LE`      | Daily discharge energy    | 0.01 kWh                             | Confirmed  |
+| `0x2B` |      4 | `u32 LE`      | Monthly discharge energy  | 0.01 kWh                             | Confirmed  |
+| `0x2F` |      2 | `u16 LE`      | EMS firmware version      | raw version                          | Confirmed  |
+| `0x31` |      2 | `u16 LE`      | Inverter firmware version | raw version                          | Confirmed  |
+| `0x33` |      2 | `u16 LE`      | MPPT firmware version     | raw version                          | Confirmed  |
+| `0x35` |      2 | `u16 LE`      | BMS firmware version      | raw version                          | Confirmed  |
+| `0x37` |      5 | unknown       | unknown                   | —                                    | —          |
+| `0x3C` |      1 | `u8 bitfield` | Operational status        | raw                                  | Tentative  |
+| `0x3D` |     13 | unknown       | unknown                   | —                                    | —          |
+
+Controlled observations distinguish raw battery-state values `0`, `1`, and `2`
+as idle, charging, and discharging respectively. Other raw values remain
+unresolved.
 
 ## `0x04` device information
 
@@ -114,7 +118,7 @@ enough for named Home Assistant events or entities.
 | `0x02` |      2 | `u16 LE`       | Inverter error code                      | raw          | Strong     |
 | `0x04` |      2 | `u16 LE`       | Inverter warning code                    | raw          | Strong     |
 | `0x06` |      2 | `u16 LE`       | Grid voltage                             | 0.1 V        | Strong     |
-| `0x08` |      2 | `u16 LE`       | Grid current                             | 0.1 A        | Strong     |
+| `0x08` |      2 | `u16 LE`       | Unresolved inverter field                | raw          | Tentative  |
 | `0x0A` |      2 | `u16 LE`       | Grid power factor                        | raw          | Strong     |
 | `0x0C` |      2 | `u16 LE`       | Grid frequency                           | 0.01 Hz      | Confirmed  |
 | `0x0E` |      2 | `u16 LE`       | Internal DC/bus voltage                  | 0.1 V        | Strong     |
@@ -172,6 +176,12 @@ enough for named Home Assistant events or entities.
 | `0xA0` |      2 | `i16 LE`       | Battery temperature sensor 4             | °C           | Strong     |
 | `0xA2` |      2 | `i16 LE`       | BMS/environment temperature              | °C           | Strong     |
 | `0xA4` |      2 | `i16 LE`       | BMS MOSFET temperature                   | °C           | Strong     |
+
+Offset `0x08` was previously interpreted as grid current. Controlled Jupiter
+observations showed that it remained zero while the device had non-zero grid
+voltage and AC output power, so its semantics and scale are now unresolved. The
+integration does not expose it as a Home Assistant grid-current entity pending
+further validation.
 
 `*` MPPT bits 4–7 identify active PV inputs 1–4. Bit 2 is strongly
 supported as an initialized/ready state. Other bits remain unresolved.
