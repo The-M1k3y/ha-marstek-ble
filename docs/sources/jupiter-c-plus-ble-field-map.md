@@ -69,6 +69,19 @@ Controlled observations distinguish raw battery-state values `0`, `1`, and `2`
 as idle, charging, and discharging respectively. Other raw values remain
 unresolved.
 
+The operational-status field at `0x3C` has so far been observed with values
+`0x00`, `0x01`, and `0x03`, which is consistent with a bitfield interpretation.
+Bit 1 (`0x02`) correlates with a full-battery/excess-energy handling mode: it has
+been set during the special full-battery discharge/headroom sequence and during
+subsequent PV-following excess-energy export. However, it can remain clear while
+the inverter is exporting substantial scheduled power, including when the
+battery supplies most of that output. It therefore must not be interpreted as a
+generic grid-export flag, an inverter-active flag, a battery-discharge flag, or
+a confirmed representation of the user-facing surplus-feed-in setting. A useful
+working description is **excess-energy/full-battery mode**, but the exact trigger,
+state-machine scope, and meaning of bit 1 remain Tentative. Bit 0 is still
+unresolved.
+
 The grid-connection flag at `0x0E` remains set when the target output is zero and
 clears when the AC/grid connection is physically removed. On reconnection, grid
 voltage and frequency can be measurable before the flag returns, so it represents
