@@ -4,11 +4,11 @@ title: Jupiter-C Plus 0x14 detailed telemetry
 description: Inverter, grid, MPPT, PV-input, battery, and repeated battery-pack response layout.
 tags: [jupiter, ble, telemetry, inverter, mppt, bms]
 status: draft
-source_revision: "8614c49855e2b471cf57113d6297b8321ced9e6f"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T16:16:00Z }
+source_revision: "991f4fed7522c1552b53c442a14ecf2a5aee40db"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T18:27:00Z }
 sources:
   - id: sanitized-map
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/6b476c58e4797c9c315a6a7c50da711b4aecf2b6/docs/sources/jupiter-c-plus-ble-field-map.md
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/991f4fed7522c1552b53c442a14ecf2a5aee40db/docs/sources/jupiter-c-plus-ble-field-map.md
     title: Sanitized Jupiter field map
   - id: model
     resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/8614c49855e2b471cf57113d6297b8321ced9e6f/custom_components/marstek_ble/products/jupiter.py
@@ -64,6 +64,39 @@ Controlled Jupiter observations showed it remaining zero while grid voltage and
 AC output power were non-zero. Its semantics and scale are therefore unresolved.
 The integration retains the field internally for future investigation but no
 longer exposes it as a Home Assistant `Grid Current` sensor.
+
+# MPPT state flags
+
+The 16-bit state word at `0x20` is preserved in full as `MPPT State Flags`. Only
+bits with repeated behavioral correlations have assigned meanings.
+
+| Bit | Mask     | Working interpretation              | Confidence |
+| --: | -------- | ----------------------------------- | ---------- |
+|   0 | `0x0001` | MPPT stopped / parked / disabled    | Tentative  |
+|   1 | `0x0002` | unresolved                          | —          |
+|   2 | `0x0004` | MPPT controller initialized / ready | Strong     |
+|   3 | `0x0008` | unresolved                          | —          |
+|   4 | `0x0010` | PV input 1 active                   | Confirmed  |
+|   5 | `0x0020` | PV input 2 active                   | Confirmed  |
+|   6 | `0x0040` | PV input 3 active                   | Confirmed  |
+|   7 | `0x0080` | PV input 4 active                   | Confirmed  |
+| 8–15| `0x0100`–`0x8000` | unresolved               | —          |
+
+The forced-full-battery captures provide a useful state-machine sequence. Normal
+operation with all four PV inputs active used `0x00F4`, which is bit 2 plus bits
+4–7. During the deliberate MPPT/PV shutdown associated with the battery-headroom
+sequence, the state changed to `0x0001`: bit 0 was the only set bit, while the
+controller-ready and all PV-active bits were clear. During restart, `0x0014`
+showed bit 2 plus PV input 1 active before the remaining PV-active bits returned.
+A separate `0x0004` state showed bit 2 set with no PV input active.
+
+This strongly supports bit 2 as a controller-ready/initialized state that is
+independent of whether any PV channel is currently active. Bit 0 appears to
+represent an opposing stopped/parked controller state. Its exact firmware meaning
+is not yet established, so **MPPT stopped / parked / disabled** remains a working
+interpretation rather than a canonical semantic name. Bit 0 and bit 2 were not
+observed set simultaneously in the inspected captures. Bits 1, 3, and 8–15 remain
+unresolved.
 
 # Multiple packet sources
 
