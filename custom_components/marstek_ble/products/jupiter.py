@@ -9,15 +9,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from homeassistant.components.binary_sensor import BinarySensorDeviceClass, BinarySensorEntityDescription
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription, SensorStateClass
 from homeassistant.const import PERCENTAGE, UnitOfElectricCurrent, UnitOfElectricPotential, UnitOfEnergy, UnitOfFrequency, UnitOfPower, UnitOfTemperature
 from homeassistant.helpers.entity import EntityCategory
 
-from ..entity import ProductDeviceSpec, ProductProfile, RepeatedChildDeviceSpec, binary_sensor_entity, derived_binary_sensor, derived_sensor, sensor_entity
+from ..entity import ProductDeviceSpec, ProductProfile, RepeatedChildDeviceSpec, binary_sensor_entity, derived_sensor, sensor_entity
 from ..schema import FieldSource, PacketSchema, RepeatedSectionSource, divide_by, multiply_by, nonzero, repeated_section_field, section_field, source_field, value_field
 
 _DIAGNOSTIC = EntityCategory.DIAGNOSTIC
+_BATTERY_STATES = {0: "idle", 1: "charging", 2: "discharging"}
 
 
 def _sensor(key: str, name: str, **kwargs):
@@ -26,6 +27,10 @@ def _sensor(key: str, name: str, **kwargs):
 
 def _binary(key: str, name: str, **kwargs):
     return (binary_sensor_entity(key=key, name=name, **kwargs),)
+
+
+def _battery_state(value: int) -> str:
+    return _BATTERY_STATES.get(value, "unknown")
 
 
 class JupiterPackets:
@@ -75,7 +80,7 @@ class JupiterRuntimeData:
 
     ac_output_power: float | None = source_field(sources={_RUNTIME: FieldSource(0x0C, "<H", float), _DETAIL: FieldSource(0x10, "<h", float)}, entities=_sensor("ac_output_power", "AC Output Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT))
     ac_output_active: bool | None = source_field(sources={_RUNTIME: FieldSource(0x0E, "<B", nonzero)}, entities=_binary("ac_output_active", "AC Output Active", device_class=BinarySensorDeviceClass.POWER))
-    battery_charging_active: bool | None = source_field(sources={_RUNTIME: FieldSource(0x12, "<B", nonzero)}, entities=_binary("battery_charging_active", "Battery Charging Active", device_class=BinarySensorDeviceClass.BATTERY_CHARGING))
+    battery_state: str | None = source_field(sources={_RUNTIME: FieldSource(0x12, "<B", _battery_state)}, entities=_sensor("battery_state", "Battery State"))
     stored_battery_energy: float | None = source_field(sources={_RUNTIME: FieldSource(0x13, "<H", multiply_by(10)), _DETAIL: FieldSource(0x78, "<H", float)}, entities=_sensor("stored_battery_energy", "Stored Battery Energy", native_unit_of_measurement=UnitOfEnergy.WATT_HOUR, device_class=SensorDeviceClass.ENERGY_STORAGE, state_class=SensorStateClass.MEASUREMENT))
     battery_soc: float | None = source_field(sources={_RUNTIME: FieldSource(0x15, "<B", float), _DETAIL: FieldSource(0x5E, "<H", float)}, entities=_sensor("battery_soc", "Battery SOC", native_unit_of_measurement=PERCENTAGE, device_class=SensorDeviceClass.BATTERY, state_class=SensorStateClass.MEASUREMENT))
     operational_status: int | None = source_field(sources={_RUNTIME: FieldSource(0x3C, "<B")}, entities=_sensor("operational_status", "Operational Status", entity_category=_DIAGNOSTIC))
@@ -83,6 +88,12 @@ class JupiterRuntimeData:
     inverter_firmware_version: int | None = source_field(sources={_RUNTIME: FieldSource(0x31, "<H")}, entities=_sensor("inverter_firmware_version", "Inverter Firmware Version", entity_category=_DIAGNOSTIC))
     mppt_firmware_version: int | None = source_field(sources={_RUNTIME: FieldSource(0x33, "<H")}, entities=_sensor("mppt_firmware_version", "MPPT Firmware Version", entity_category=_DIAGNOSTIC))
     bms_firmware_version: int | None = source_field(sources={_RUNTIME: FieldSource(0x35, "<H"), _DETAIL: FieldSource(0x64, "<H")}, entities=_sensor("bms_firmware_version", "BMS Firmware Version", entity_category=_DIAGNOSTIC))
+
+    @property
+    def battery_charging_active(self) -> bool | None:
+        if self.battery_state in (None, "unknown"):
+            return None
+        return self.battery_state == "charging"
 
 
 @dataclass(slots=True)
@@ -105,9 +116,9 @@ class JupiterInverterData:
     error_code: int | None = source_field(sources={_DETAIL: FieldSource(0x02, "<H")}, entities=_sensor("inverter_error_code", "Inverter Error Code", entity_category=_DIAGNOSTIC))
     warning_code: int | None = source_field(sources={_DETAIL: FieldSource(0x04, "<H")}, entities=_sensor("inverter_warning_code", "Inverter Warning Code", entity_category=_DIAGNOSTIC))
     grid_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x06, "<H", divide_by(10))}, entities=_sensor("grid_voltage", "Grid Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT))
-    grid_current: float | None = source_field(sources={_DETAIL: FieldSource(0x08, "<H", divide_by(10))}, entities=_sensor("grid_current", "Grid Current", native_unit_of_measurement=UnitOfElectricCurrent.AMPERE, device_class=SensorDeviceClass.CURRENT, state_class=SensorStateClass.MEASUREMENT))
+    grid_current: float | None = source_field(sources={_DETAIL: FieldSource(0x08, "<H", divide_by(10))})
     grid_power_factor: int | None = source_field(sources={_DETAIL: FieldSource(0x0A, "<H")}, entities=_sensor("grid_power_factor", "Grid Power Factor", entity_category=_DIAGNOSTIC))
-    grid_frequency: float | None = source_field(sources={_DETAIL: FieldSource(0x0C, "<H", divide_by(100))}, entities=_sensor("grid_frequency", "Grid Frequency", native_unit_of_measurement=UnitOfFrequency.HERTZ, device_class=SensorDeviceClass.FREQUENCY, state_class=SensorStateClass.MEASUREMENT))
+    grid_frequency: float | None = source_field(sources={_DETAIL: FieldSource(0x0C, "<H", divide_by(100))}, entities=_sensor("grid_frequency", "Grid Frequency", native_unit_of_measurement=UnitOfFrequency.HERTZ, device_class=SensorDeviceClass.FREQUENCY, state_class=SensorStateClass.MEASUREMENT, suggested_display_precision=2))
     bus_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x0E, "<H", divide_by(10))}, entities=_sensor("bus_voltage", "Internal Bus Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, entity_category=_DIAGNOSTIC))
     temperature: float | None = source_field(sources={_DETAIL: FieldSource(0x12, "<h", float)}, entities=_sensor("inverter_temperature", "Inverter Temperature", native_unit_of_measurement=UnitOfTemperature.CELSIUS, device_class=SensorDeviceClass.TEMPERATURE, state_class=SensorStateClass.MEASUREMENT))
 
@@ -188,7 +199,7 @@ class JupiterEventRecord:
 class JupiterIdentityData:
     device_type: str | None = value_field(entities=_sensor("device_type", "Device Type", entity_category=_DIAGNOSTIC))
     device_id: str | None = value_field(entities=_sensor("device_id", "Device ID", entity_category=_DIAGNOSTIC))
-    mac_address: str | None = value_field(entities=_sensor("mac_address", "MAC Address", entity_category=_DIAGNOSTIC))
+    mac_address: str | None = value_field(entities=_sensor("mac_address", "Bluetooth MAC Address", entity_category=_DIAGNOSTIC))
     wifi_ssid: str | None = value_field(entities=_sensor("wifi_ssid", "WiFi SSID", entity_category=_DIAGNOSTIC))
 
 
@@ -228,6 +239,5 @@ JUPITER_PROFILE = ProductProfile(
     discovery_prefixes=("MST_JPLS_",),
     derived_entities=(
         derived_sensor(description=SensorEntityDescription(key="battery_power", name="Battery Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT), value_fn=_battery_power, stale_paths=(("battery", "voltage"), ("battery", "current"))),
-        derived_binary_sensor(description=BinarySensorEntityDescription(key="battery_charging", name="Battery Charging", device_class=BinarySensorDeviceClass.BATTERY_CHARGING), value_fn=lambda data: (power > 5) if (power := _battery_power(data)) is not None else None, stale_paths=(("battery", "voltage"), ("battery", "current"))),
     ),
 )
