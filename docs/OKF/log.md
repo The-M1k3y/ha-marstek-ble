@@ -2,10 +2,11 @@
 
 ## 2026-08-10
 
+- **Flag entities**: Added binary entities for interpreted Jupiter status bits. Confirmed MPPT bits 4–7 expose `PV Input 1–4 Active`; strongly supported MPPT bit 2 exposes `MPPT Controller Ready Unverified`; tentative runtime operational-status bit 1 exposes `Surplus Feed-In Active Unverified`. Raw flag-word diagnostics remain available, while bits without sufficiently specific interpretations remain raw-only.
 - **Unverified diagnostics**: Exposed Jupiter fields with `Strong` or `Tentative` interpretations as diagnostic sensors so their long-term changes can be correlated without presenting the meanings as verified telemetry. This includes strong inverter/MPPT/BMS values, battery-pack summaries, and the tentative base/PE voltage fields.
 - **Event observation**: Collapsed each of the twenty fixed `0x13` event-history slots into one diagnostic text sensor. Each value contains the human-readable timestamp plus the two unresolved bytes in hexadecimal form while preserving physical slot order.
 - **Unknown-field boundary**: Kept fields with no current Jupiter-specific semantic hypothesis unexposed, including detailed-telemetry offset `0x08`, unresolved `0x0D`, and raw `0x21`/`0x22`/`0x24` response bytes.
-- **Tests**: Added entity-contract coverage for the unverified diagnostic set, compact event-slot diagnostics, tentative base/PE parsing, and the boundary that wholly unresolved fields remain hidden.
+- **Tests**: Added entity-contract coverage for the unverified diagnostic set, compact event-slot diagnostics, tentative base/PE parsing, interpreted status-bit entities, and the boundary that wholly unresolved fields remain hidden.
 - **Battery state**: Reclassified Jupiter `0x03` offset `0x12` from a boolean charging flag to a three-state field: `0` idle, `1` charging, and `2` discharging. Unknown raw values remain unresolved.
 - **Entities**: Replaced the misleading `Battery Charging Active` binary entity with a `Battery State` sensor and removed the redundant battery-power-derived charging binary sensor. The signed `Battery Power` sensor remains available.
 - **Grid telemetry**: Withdrew the `Grid Current` entity because controlled Jupiter behavior contradicted the previous interpretation of `0x14` offset `0x08`; the field remains available internally for further protocol investigation.
