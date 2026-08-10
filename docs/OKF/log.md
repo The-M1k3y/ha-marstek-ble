@@ -2,6 +2,7 @@
 
 ## 2026-08-10
 
+- **Operational status**: Refined the tentative interpretation of Jupiter `0x03` offset `0x3C`. Bit 1 (`0x02`) correlates with full-battery/excess-energy handling but is not a generic surplus-feed-in, grid-export, inverter-active, or battery-discharge flag. A scheduled-export counterexample showed the bit clear while the inverter was exporting substantially from the battery. Its exact trigger and semantics remain unresolved; `excess-energy/full-battery mode` is only a working description. Bit 0 remains unresolved.
 - **Grid validity**: Reclassified Jupiter `0x03` offset `0x0E` from `AC Output Active` to `Grid Connection Valid`. Controlled zero-output, grid-loss, and grid-return behavior shows that it represents a qualified grid connection rather than output power or raw voltage presence.
 - **Inverter errors**: Identified Jupiter `0x03` offsets `0x23–0x24` as the same little-endian inverter error code exposed at `0x14` offset `0x02`. A controlled grid disconnect produced transient `0x040A` followed by persistent `0x0426`; the numeric mapping is confirmed while the tentative semantic labels remain `overfrequency` and `island / anti-islanding detection` respectively.
 - **Event history**: Reclassified the final two bytes of each Jupiter `0x13` record from separate event-value/state bytes to one `u16 LE` event/error identifier. The persistent grid-loss inverter error was written unchanged into a new event record, providing a controlled correlation.
