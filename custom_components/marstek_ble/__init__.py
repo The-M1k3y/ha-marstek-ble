@@ -1,15 +1,13 @@
-"""The Marstek BLE integration."""
+"""Marstek BLE integration."""
 
 from __future__ import annotations
 
 import logging
 
-from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ADDRESS, CONF_NAME, Platform
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers import device_registry as dr
 
 from .const import (
     CONF_MEDIUM_POLL_INTERVAL,
@@ -19,28 +17,24 @@ from .const import (
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
 )
-from .product_coordinator import (
-    ProductDataUpdateCoordinator as MarstekDataUpdateCoordinator,
-)
+from .coordinator import MarstekDataUpdateCoordinator
+from .product_coordinator import ProductDataUpdateCoordinator
 from .products import VENUS_RUNTIME, runtime_for_id, runtime_for_name
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [
+READ_ONLY_PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR]
+PLATFORMS = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
     Platform.SWITCH,
     Platform.SELECT,
 ]
-READ_ONLY_PLATFORMS: list[Platform] = [
-    Platform.SENSOR,
-    Platform.BINARY_SENSOR,
-]
 
 
 def _platforms_for_product(product_id: str) -> list[Platform]:
-    """Return only platforms whose command semantics are valid for a product."""
+    """Return platforms supported by one product runtime."""
 
     return PLATFORMS if product_id == VENUS_RUNTIME.product_id else READ_ONLY_PLATFORMS
 
@@ -50,85 +44,53 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.debug("Setting up Marstek BLE entry: %s", entry.data)
 
-    address: str = entry.data[CONF_ADDRESS]
-    device_name: str = entry.data.get(CONF_NAME, entry.title)
-    poll_interval: int = entry.options.get(
-        CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL
-    )
-    medium_poll_interval: int = entry.options.get(
-        CONF_MEDIUM_POLL_INTERVAL, DEFAULT_MEDIUM_POLL_INTERVAL
-    )
+    address = entry.data.get("address")
+    if not address:
+        raise ConfigEntryNotReady("Missing Bluetooth address")
 
-    for other_entry in hass.config_entries.async_entries(DOMAIN):
-        if other_entry.entry_id != entry.entry_id:
-            other_name = other_entry.data.get(CONF_NAME, other_entry.title)
-            other_address = other_entry.data.get(CONF_ADDRESS)
-            if other_name == device_name and other_address != address:
-                _LOGGER.warning(
-                    "Found duplicate device name '%s': this entry uses address %s, "
-                    "but another entry uses address %s. This may cause data to be "
-                    "reported incorrectly. Please remove duplicate config entries.",
-                    device_name,
-                    address,
-                    other_address,
-                )
+    product_id = entry.data.get(CONF_PRODUCT_ID)
+    product = runtime_for_id(product_id) if product_id else None
+    if product is None and product_id is not None:
+        raise ConfigEntryNotReady(f"Unsupported Marstek product: {product_id}")
 
-    ble_device = bluetooth.async_ble_device_from_address(
-        hass, address.upper(), connectable=True
-    )
-    if not ble_device:
-        raise ConfigEntryNotReady(
-            f"Could not find Marstek device with address {address}"
-        )
+    if product is None:
+        ble_device = None
+        try:
+            from homeassistant.components.bluetooth import async_ble_device_from_address
 
-    configured_product_id = entry.data.get(CONF_PRODUCT_ID)
-    if configured_product_id is not None:
-        product = runtime_for_id(configured_product_id)
-        if product is None:
-            raise ConfigEntryNotReady(
-                f"Unsupported Marstek product profile {configured_product_id!r}"
+            ble_device = async_ble_device_from_address(
+                hass, address, connectable=True
             )
-    else:
-        # Entries created before product IDs were persisted are Venus entries.
-        product = (
-            runtime_for_name(device_name)
-            or runtime_for_name(getattr(ble_device, "name", None))
-            or VENUS_RUNTIME
-        )
+        except Exception:  # noqa: BLE001
+            ble_device = None
 
-    _LOGGER.debug(
-        "Selected product runtime %s for %s",
-        product.product_id,
-        device_name,
+        product = runtime_for_name(
+            getattr(ble_device, "name", None) if ble_device is not None else None
+        )
+        if product is None:
+            product = VENUS_RUNTIME
+
+    coordinator = ProductDataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        address,
+        product,
+        poll_interval=entry.options.get(
+            CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL
+        ),
+        medium_poll_interval=entry.options.get(
+            CONF_MEDIUM_POLL_INTERVAL, DEFAULT_MEDIUM_POLL_INTERVAL
+        ),
     )
 
-    coordinator = entry.runtime_data = MarstekDataUpdateCoordinator(
-        hass=hass,
-        logger=_LOGGER,
-        address=address,
-        device=ble_device,
-        device_name=device_name,
-        product=product,
-        poll_interval=poll_interval,
-        medium_poll_interval=medium_poll_interval,
-    )
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except Exception as err:  # noqa: BLE001
+        raise ConfigEntryNotReady from err
 
-    entry.async_on_unload(coordinator.async_start())
-    entry.async_on_unload(entry.add_update_listener(_async_handle_entry_update))
-
-    if not await coordinator.async_wait_ready():
-        raise ConfigEntryNotReady(
-            f"Device {address} not advertising, will retry later"
-        )
-
-    device_registry = dr.async_get(hass)
-    device_registry.async_get_or_create(
-        config_entry_id=entry.entry_id,
-        connections={(dr.CONNECTION_BLUETOOTH, address)},
-        identifiers={(DOMAIN, address)},
-        name=device_name,
-        manufacturer=product.profile.device.manufacturer,
-        model=product.profile.device.model,
+    entry.runtime_data = coordinator
+    entry.async_on_unload(
+        entry.add_update_listener(_async_handle_entry_update)
     )
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
@@ -162,11 +124,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 err,
             )
 
-    product_id = (
-        coordinator.product.product_id
-        if coordinator is not None
-        else entry.data.get(CONF_PRODUCT_ID, VENUS_RUNTIME.product_id)
-    )
+    product_id = None
+    if domain_data:
+        product_id = domain_data.get("product_id")
+    if product_id is None and coordinator is not None:
+        product = getattr(coordinator, "product", None)
+        product_id = getattr(product, "product_id", None)
+    if product_id is None:
+        product_id = entry.data.get(
+            CONF_PRODUCT_ID, VENUS_RUNTIME.product_id
+        )
+
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry, _platforms_for_product(product_id)
     )
