@@ -641,7 +641,7 @@ def test_jupiter_entity_plan_child_devices_presence_and_expansion_detection() ->
     assert change.issue_id == "jupiter_c_plus_battery_packs_expansion_count_increased"
 
 
-def test_jupiter_derived_battery_entities_cover_missing_and_threshold_states() -> None:
+def test_jupiter_derived_battery_power_covers_missing_states_and_entity_contract() -> None:
     data = JupiterData()
     assert _battery_power(data) is None
     data.battery.voltage = 52.0
@@ -651,20 +651,15 @@ def test_jupiter_derived_battery_entities_cover_missing_and_threshold_states() -
 
     plan = JUPITER_PROFILE.build_entity_plan(data)
     power = next(entity for entity in plan.entities if entity.description.key == "battery_power")
-    charging = next(
-        entity for entity in plan.entities if entity.description.key == "battery_charging"
-    )
     assert power.value_from(data) == -104.0
-    assert charging.value_from(data) is False
     assert power.stale_paths == (("battery", "voltage"), ("battery", "current"))
+    assert all(entity.description.key != "battery_charging" for entity in plan.entities)
 
-    data.battery.current = 5 / 52
-    assert charging.value_from(data) is False
     data.battery.current = 6 / 52
-    assert charging.value_from(data) is True
+    assert power.value_from(data) == pytest.approx(6.0)
 
     data.battery.voltage = None
-    assert charging.value_from(data) is None
+    assert power.value_from(data) is None
 
 
 def test_entity_spec_factories_return_expected_platforms() -> None:
