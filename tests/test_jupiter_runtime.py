@@ -6,6 +6,7 @@ import struct
 
 import pytest
 
+from custom_components.marstek_ble.entity import EntityPlatform
 from custom_components.marstek_ble.product_runtime import ProductProtocol
 from custom_components.marstek_ble.products import JUPITER_RUNTIME, runtime_for_id, runtime_for_name
 from custom_components.marstek_ble.products.jupiter_runtime import RuntimeJupiterData
@@ -221,3 +222,45 @@ def test_jupiter_event_history_is_twenty_fixed_records() -> None:
     assert data.events[0].event_state == 1
     assert data.events[1].year == 2025
     assert data.events[1].event_value == 9
+
+
+@pytest.mark.known_issue
+def test_jupiter_runtime_summary_decodes_battery_state_values() -> None:
+    expected = (
+        (0, "idle", False),
+        (1, "charging", True),
+        (2, "discharging", False),
+        (255, "unknown", None),
+    )
+
+    for raw_value, state, charging_active in expected:
+        data = JUPITER_RUNTIME.create_data()
+        payload = bytearray(74)
+        payload[18] = raw_value
+
+        assert JUPITER_RUNTIME.parse_payload(0x03, bytes(payload), data)
+        assert data.runtime.battery_state == state
+        assert data.runtime.battery_charging_active is charging_active
+
+
+@pytest.mark.known_issue
+def test_jupiter_entity_plan_uses_verified_state_and_display_metadata() -> None:
+    data = JUPITER_RUNTIME.create_data()
+    plan = JUPITER_RUNTIME.profile.build_entity_plan(data)
+    sensors = {
+        item.unique_key: item
+        for item in plan.entities
+        if item.platform is EntityPlatform.SENSOR
+    }
+    binary_sensors = {
+        item.unique_key: item
+        for item in plan.entities
+        if item.platform is EntityPlatform.BINARY_SENSOR
+    }
+
+    assert sensors["battery_state"].description.name == "Battery State"
+    assert "grid_current" not in sensors
+    assert sensors["grid_frequency"].description.suggested_display_precision == 2
+    assert sensors["mac_address"].description.name == "Bluetooth MAC Address"
+    assert "battery_charging_active" not in binary_sensors
+    assert "battery_charging" not in binary_sensors
