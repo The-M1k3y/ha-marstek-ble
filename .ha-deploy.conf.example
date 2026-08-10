@@ -1,0 +1,21 @@
+# Copy this file to .ha-deploy.conf and adjust the values for your Home Assistant
+# development instance. The real file is ignored by Git.
+#
+# This file is sourced by Bash. Keep credentials such as SSH private keys outside
+# this file and use the normal OpenSSH configuration/agent for authentication.
+
+# SSH destination used by both rsync and ssh. This may also be a Host alias from
+# ~/.ssh/config.
+HA_SSH_TARGET="root@ha-dev.example.net"
+
+# SSH port exposed by the Home Assistant host or SSH add-on.
+HA_SSH_PORT="22"
+
+# Home Assistant configuration directory. The integration is uploaded to
+# <HA_CONFIG_DIR>/custom_components/marstek_ble/.
+HA_CONFIG_DIR="/config"
+
+# Command executed on the remote host to restart Home Assistant Core.
+# The value below is suitable for Home Assistant OS/Supervised environments where
+# the Home Assistant CLI is available in the SSH session.
+HA_RESTART_COMMAND="ha core restart"

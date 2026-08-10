@@ -2,6 +2,7 @@ set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
 python := env_var_or_default("PYTHON", "python3")
 ha_python := env_var_or_default("HA_PYTHON", "python3.14")
+ha_deploy_config := ".ha-deploy.conf"
 
 # List the available project recipes.
 default:
@@ -83,6 +84,19 @@ mutation-results:
 # Browse surviving mutations interactively.
 mutation-browse:
     mutmut browse
+
+# Upload the integration source to the configured Home Assistant instance.
+ha-upload:
+    @test -f "{{ha_deploy_config}}" || { echo "Missing {{ha_deploy_config}}; copy {{ha_deploy_config}}.example and edit it." >&2; exit 1; }
+    @source "{{ha_deploy_config}}"; : "${HA_SSH_TARGET:?HA_SSH_TARGET is required}" "${HA_SSH_PORT:?HA_SSH_PORT is required}" "${HA_CONFIG_DIR:?HA_CONFIG_DIR is required}"; ssh -p "$HA_SSH_PORT" "$HA_SSH_TARGET" "mkdir -p '$HA_CONFIG_DIR/custom_components/marstek_ble'"; rsync -az --delete -e "ssh -p $HA_SSH_PORT" custom_components/marstek_ble/ "$HA_SSH_TARGET:$HA_CONFIG_DIR/custom_components/marstek_ble/"
+
+# Restart Home Assistant Core using the configured remote command.
+ha-restart:
+    @test -f "{{ha_deploy_config}}" || { echo "Missing {{ha_deploy_config}}; copy {{ha_deploy_config}}.example and edit it." >&2; exit 1; }
+    @source "{{ha_deploy_config}}"; : "${HA_SSH_TARGET:?HA_SSH_TARGET is required}" "${HA_SSH_PORT:?HA_SSH_PORT is required}" "${HA_RESTART_COMMAND:?HA_RESTART_COMMAND is required}"; ssh -p "$HA_SSH_PORT" "$HA_SSH_TARGET" "$HA_RESTART_COMMAND"
+
+# Upload the integration and restart Home Assistant Core.
+ha-deploy: ha-upload ha-restart
 
 # Remove local Python, pytest, coverage, tox, and mutation-test artifacts.
 clean:
