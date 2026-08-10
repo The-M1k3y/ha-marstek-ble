@@ -4,14 +4,14 @@ title: Jupiter-C Plus 0x14 detailed telemetry
 description: Inverter, grid, MPPT, PV-input, battery, and repeated battery-pack response layout.
 tags: [jupiter, ble, telemetry, inverter, mppt, bms]
 status: draft
-source_revision: "4a91e24a21a63171cfbffad4111b8caf5d25432c"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T11:57:00Z }
+source_revision: "b36eb35ef33813f888c33c4d68cb1fdb370d109b"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T12:29:00Z }
 sources:
   - id: sanitized-map
     resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/86ba4672a94059ccb11f10258f33fd4bde53ef27/docs/sources/jupiter-c-plus-ble-field-map.md
     title: Sanitized Jupiter field map
   - id: model
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/4a91e24a21a63171cfbffad4111b8caf5d25432c/custom_components/marstek_ble/products/jupiter.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/b36eb35ef33813f888c33c4d68cb1fdb370d109b/custom_components/marstek_ble/products/jupiter.py
     title: Declarative Jupiter model
 ---
 
@@ -51,6 +51,25 @@ normal entity.
 Fields for which no current Jupiter-specific meaning exists are not exposed just
 because bytes are present. This distinction keeps observational entities tied to
 an actual hypothesis rather than producing arbitrary raw-byte sensors.
+
+# MPPT state flags
+
+The raw `u16` MPPT state word at `0x20` remains available as the diagnostic
+`MPPT State Flags` sensor. Individual bits are additionally exposed only where
+there is a sufficiently specific interpretation:
+
+| Bit | Interpretation                 | Confidence | Entity |
+| --: | ------------------------------ | ---------- | ------ |
+|   2 | MPPT controller initialized/ready | Strong  | `MPPT Controller Ready Unverified` |
+|   4 | PV input 1 active              | Confirmed  | `PV Input 1 Active` |
+|   5 | PV input 2 active              | Confirmed  | `PV Input 2 Active` |
+|   6 | PV input 3 active              | Confirmed  | `PV Input 3 Active` |
+|   7 | PV input 4 active              | Confirmed  | `PV Input 4 Active` |
+
+The ready-state entity deliberately carries the `Unverified` suffix because its
+meaning is strongly supported but has not received a dedicated controlled test.
+The four PV-input bits do not carry the suffix because their mapping is treated
+as confirmed. Other MPPT state bits remain raw-only.
 
 # Inverter field at `0x08`
 
