@@ -4,14 +4,14 @@ title: Jupiter-C Plus 0x14 detailed telemetry
 description: Inverter, grid, MPPT, PV-input, battery, and repeated battery-pack response layout.
 tags: [jupiter, ble, telemetry, inverter, mppt, bms]
 status: draft
-source_revision: "863e113761b0b3d589fa727728307c2c0f4d58e2"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T11:15:00Z }
+source_revision: "8614c49855e2b471cf57113d6297b8321ced9e6f"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T16:16:00Z }
 sources:
   - id: sanitized-map
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/86ba4672a94059ccb11f10258f33fd4bde53ef27/docs/sources/jupiter-c-plus-ble-field-map.md
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/6b476c58e4797c9c315a6a7c50da711b4aecf2b6/docs/sources/jupiter-c-plus-ble-field-map.md
     title: Sanitized Jupiter field map
   - id: model
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/863e113761b0b3d589fa727728307c2c0f4d58e2/custom_components/marstek_ble/products/jupiter.py
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/8614c49855e2b471cf57113d6297b8321ced9e6f/custom_components/marstek_ble/products/jupiter.py
     title: Declarative Jupiter model
 ---
 
@@ -32,6 +32,30 @@ that structure by contiguous byte range without changing field order.
 | `0x58–0x79` | Battery limits, state, capacity, electrical values, diagnostics, pack count, and stored energy |
 | `0x7A–0x99` | Four repeated 8-byte battery-pack summaries                            |
 | `0x9A–0xA5` | Battery, environment, and MOSFET temperatures                          |
+
+# Inverter state and grid qualification
+
+The operating-state word at `0x00` is not an output-power flag. In a controlled
+AC/grid disconnect it changed from the normal non-zero state to zero. After AC
+was restored, valid grid voltage and frequency measurements returned while the
+state word remained zero for a period. The individual bits are still unresolved,
+but the word clearly includes inverter/grid qualification state rather than mere
+voltage presence or non-zero power production.
+
+Runtime command `0x03` offset `0x0E` exposes the related boolean **Grid Connection
+Valid** state. It remains true at a zero-watt target, clears on physical grid
+removal, and can remain false after voltage/frequency measurements reappear.
+
+# Inverter errors
+
+The inverter error code at `0x02` is mirrored by command `0x03` offset `0x23`.
+During controlled grid loss it transitioned through `0x040A` before settling at
+`0x0426`; the persistent value was also written as the 16-bit ID in command
+`0x13` event history.
+
+The numeric mappings are confirmed. Based on general grid-tie inverter behaviour,
+`0x040A` is tentatively associated with **overfrequency** and `0x0426` with
+**island / anti-islanding detection**. Those semantic labels remain tentative.
 
 # Inverter field at `0x08`
 
