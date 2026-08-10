@@ -12,8 +12,41 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import MarstekDataUpdateCoordinator
-from .entity import EntityBinding, EntityPlatform
-from .product_entity_platform import setup_product_entity_platform
+from .product_entity_platform import (
+    EntityBinding,
+    EntityPlatform,
+    setup_product_entity_platform,
+)
+
+_LEGACY_BINARY_SPECS = (
+    ("wifi_connected", "WiFi Connected", BinarySensorDeviceClass.CONNECTIVITY),
+    ("mqtt_connected", "MQTT Connected", BinarySensorDeviceClass.CONNECTIVITY),
+    ("out1_active", "Output 1 Active", BinarySensorDeviceClass.POWER),
+    ("extern1_connected", "External 1 Connected", BinarySensorDeviceClass.CONNECTIVITY),
+    ("smart_meter_connected", "Smart Meter Connected", BinarySensorDeviceClass.CONNECTIVITY),
+)
+
+
+def _setup_legacy_binary_sensors(
+    coordinator: MarstekDataUpdateCoordinator,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Create the historical flat Venus binary-sensor contract."""
+
+    async_add_entities(
+        [
+            MarstekBinarySensor(
+                coordinator,
+                entry,
+                key,
+                name,
+                lambda data, attribute=key: getattr(data, attribute),
+                device_class,
+            )
+            for key, name, device_class in _LEGACY_BINARY_SPECS
+        ]
+    )
 
 
 async def async_setup_entry(
@@ -21,9 +54,13 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up declarative Marstek BLE binary sensors from a config entry."""
+    """Set up Marstek BLE binary sensors from a config entry."""
 
     coordinator = entry.runtime_data
+    if not hasattr(coordinator, "product") and not hasattr(coordinator.data, "battery"):
+        _setup_legacy_binary_sensors(coordinator, entry, async_add_entities)
+        return
+
     setup_product_entity_platform(
         coordinator,
         entry,
