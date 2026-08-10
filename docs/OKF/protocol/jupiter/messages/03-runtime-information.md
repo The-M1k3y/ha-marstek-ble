@@ -1,14 +1,14 @@
 ---
 type: BLE Message
 title: Jupiter-C Plus 0x03 runtime summary
-description: Sanitized runtime response fields for PV inputs, grid validity, battery state, energy counters, inverter errors, and firmware versions.
+description: Sanitized runtime response fields for PV inputs, grid validity, battery state, energy counters, inverter errors, operational status, and firmware versions.
 tags: [jupiter, ble, telemetry, runtime]
 status: draft
-source_revision: "8614c49855e2b471cf57113d6297b8321ced9e6f"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T16:16:00Z }
+source_revision: "306dce61854f5626dfb4a8454fe686791c39b2d9"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-10T18:09:00Z }
 sources:
   - id: sanitized-map
-    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/6b476c58e4797c9c315a6a7c50da711b4aecf2b6/docs/sources/jupiter-c-plus-ble-field-map.md
+    resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/306dce61854f5626dfb4a8454fe686791c39b2d9/docs/sources/jupiter-c-plus-ble-field-map.md
     title: Sanitized Jupiter field map
   - id: model
     resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/8614c49855e2b471cf57113d6297b8321ced9e6f/custom_components/marstek_ble/products/jupiter.py
@@ -50,6 +50,22 @@ Payload length: 74 bytes. Offsets are relative to the payload.
 | `0x37` |      5 | unknown       | unknown                   | —                                       | —          |
 | `0x3C` |      1 | `u8 bitfield` | Operational status        | raw                                     | Tentative  |
 | `0x3D` |     13 | unknown       | unknown                   | —                                       | —          |
+
+# Operational status at `0x3C`
+
+The exact meaning of this byte is not yet understood. Observed values `0x00`,
+`0x01`, and `0x03` are consistent with a bitfield, but individual bit semantics
+remain provisional.
+
+Bit 1 (`0x02`) correlates with an internal full-battery/excess-energy handling
+mode. It has been observed set during the special full-battery discharge/headroom
+sequence and during subsequent PV-following excess-energy export. A later
+counterexample showed the same bit clear during substantial scheduled grid
+export supported mainly by the battery. Bit 1 therefore does **not** simply mean
+surplus feed-in, grid export, inverter active, or battery discharge, and there is
+not yet enough evidence to equate it with the user-facing surplus-feed-in
+configuration. `excess-energy/full-battery mode` is only a working description,
+not a confirmed semantic name. Bit 0 remains unresolved.
 
 The grid-valid flag is independent of requested/output power: it remains true at
 zero target power, clears on physical AC/grid removal, and can remain false for
