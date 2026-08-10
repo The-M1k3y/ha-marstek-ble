@@ -79,7 +79,9 @@ class JupiterRuntimeData:
     """Live system and battery summary values."""
 
     ac_output_power: float | None = source_field(sources={_RUNTIME: FieldSource(0x0C, "<H", float), _DETAIL: FieldSource(0x10, "<h", float)}, entities=_sensor("ac_output_power", "AC Output Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT))
-    ac_output_active: bool | None = source_field(sources={_RUNTIME: FieldSource(0x0E, "<B", nonzero)}, entities=_binary("ac_output_active", "AC Output Active", device_class=BinarySensorDeviceClass.POWER))
+    grid_connection_valid: bool | None = source_field(sources={_RUNTIME: FieldSource(0x0E, "<B", nonzero)}, entities=_binary("grid_connection_valid", "Grid Connection Valid", device_class=BinarySensorDeviceClass.CONNECTIVITY))
+    # Temporary data-model compatibility for callers using the old field name.
+    ac_output_active: bool | None = source_field(sources={_RUNTIME: FieldSource(0x0E, "<B", nonzero)})
     battery_state: str | None = source_field(sources={_RUNTIME: FieldSource(0x12, "<B", _battery_state)}, entities=_sensor("battery_state", "Battery State"))
     stored_battery_energy: float | None = source_field(sources={_RUNTIME: FieldSource(0x13, "<H", multiply_by(10)), _DETAIL: FieldSource(0x78, "<H", float)}, entities=_sensor("stored_battery_energy", "Stored Battery Energy", native_unit_of_measurement=UnitOfEnergy.WATT_HOUR, device_class=SensorDeviceClass.ENERGY_STORAGE, state_class=SensorStateClass.MEASUREMENT))
     battery_soc: float | None = source_field(sources={_RUNTIME: FieldSource(0x15, "<B", float), _DETAIL: FieldSource(0x5E, "<H", float)}, entities=_sensor("battery_soc", "Battery SOC", native_unit_of_measurement=PERCENTAGE, device_class=SensorDeviceClass.BATTERY, state_class=SensorStateClass.MEASUREMENT))
@@ -113,7 +115,8 @@ class JupiterInverterData:
     """Inverter and grid-side detailed telemetry."""
 
     state_flags: int | None = source_field(sources={_DETAIL: FieldSource(0x00, "<H")}, entities=_sensor("inverter_state_flags", "Inverter State Flags", entity_category=_DIAGNOSTIC))
-    error_code: int | None = source_field(sources={_DETAIL: FieldSource(0x02, "<H")}, entities=_sensor("inverter_error_code", "Inverter Error Code", entity_category=_DIAGNOSTIC))
+    # Error-code names inferred from controlled grid-loss behavior remain tentative.
+    error_code: int | None = source_field(sources={_RUNTIME: FieldSource(0x23, "<H"), _DETAIL: FieldSource(0x02, "<H")}, entities=_sensor("inverter_error_code", "Inverter Error Code", entity_category=_DIAGNOSTIC))
     warning_code: int | None = source_field(sources={_DETAIL: FieldSource(0x04, "<H")}, entities=_sensor("inverter_warning_code", "Inverter Warning Code", entity_category=_DIAGNOSTIC))
     grid_voltage: float | None = source_field(sources={_DETAIL: FieldSource(0x06, "<H", divide_by(10))}, entities=_sensor("grid_voltage", "Grid Voltage", native_unit_of_measurement=UnitOfElectricPotential.VOLT, device_class=SensorDeviceClass.VOLTAGE, state_class=SensorStateClass.MEASUREMENT))
     grid_current: float | None = source_field(sources={_DETAIL: FieldSource(0x08, "<H", divide_by(10))})
@@ -184,13 +187,15 @@ class JupiterBatteryData:
 
 @dataclass(slots=True)
 class JupiterEventRecord:
-    """One event-history record; event semantics remain unresolved."""
+    """One event-history record with a raw 16-bit event/error code."""
 
     year: int | None = source_field(sources={_EVENTS: FieldSource(0x00, "<H")})
     month: int | None = source_field(sources={_EVENTS: FieldSource(0x02, "<B")})
     day: int | None = source_field(sources={_EVENTS: FieldSource(0x03, "<B")})
     hour: int | None = source_field(sources={_EVENTS: FieldSource(0x04, "<B")})
     minute: int | None = source_field(sources={_EVENTS: FieldSource(0x05, "<B")})
+    event_code: int | None = source_field(sources={_EVENTS: FieldSource(0x06, "<H")})
+    # Temporary compatibility fields preserve the previous byte-wise view.
     event_value: int | None = source_field(sources={_EVENTS: FieldSource(0x06, "<B")})
     event_state: int | None = source_field(sources={_EVENTS: FieldSource(0x07, "<B")})
 
