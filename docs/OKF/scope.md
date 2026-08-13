@@ -5,7 +5,7 @@ description: Defines the product, source, privacy, runtime-status, and trust bou
 tags: [scope, provenance, privacy, marstek, venus, jupiter]
 status: draft
 source_revision: "aaab90ae2bde49671ee9081fb0df499ff1134134"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-13T12:00:00Z }
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-13T10:29:54Z }
 sources:
   - id: repository
     resource: https://github.com/The-M1k3y/ha-marstek-ble/tree/112abd322722b2e84bcdf34ee4b0325bf14b7313
