@@ -185,9 +185,6 @@ JUPITER_RUNTIME = ProductRuntime(
     medium_poll=(
         PollCommand(JupiterPackets.UNRESOLVED_STATUS.command),
         PollCommand(JupiterPackets.WIFI_SSID.command),
-        PollCommand(JupiterPackets.RAW_STATUS_22.command),
-        PollCommand(JupiterPackets.RAW_STATUS_21.command, b"\x0b"),
-        PollCommand(JupiterPackets.RAW_STATUS_24.command),
         PollCommand(JupiterPackets.DEVICE_INFORMATION.command),
         PollCommand(JupiterPackets.EVENT_HISTORY.command),
     ),
