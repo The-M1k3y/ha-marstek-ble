@@ -777,6 +777,9 @@ VENUS_PROFILE = ProductProfile(
         _NETWORK,
         _LOCAL_API,
     ),
+    supported_commands=frozenset(
+        {0x03, 0x08, 0x0D, 0x13, 0x14, 0x1A, 0x1C, 0x21, 0x22, 0x24, 0x28}
+    ),
     discovery_prefixes=("MST_ACCP_", "MST_VNSE3_"),
     derived_entities=(
         derived_sensor(
