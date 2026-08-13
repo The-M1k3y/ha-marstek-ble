@@ -4,8 +4,8 @@ title: Marstek BLE runtime architecture
 description: Product selection, polling, BLE lifecycle, product-specific parsing, declarative entities, and capability boundaries.
 tags: [architecture, coordinator, polling, bluetooth, multi-product]
 status: draft
-source_revision: "112abd322722b2e84bcdf34ee4b0325bf14b7313"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-09T10:50:00Z }
+source_revision: "aaab90ae2bde49671ee9081fb0df499ff1134134"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-13T12:00:00Z }
 sources:
   - id: init
     resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/__init__.py
@@ -48,9 +48,9 @@ Venus keeps its product-specific schedule. Jupiter uses only response structures
 | Cadence | Jupiter commands |
 | ------- | ---------------- |
 | Fast    | `0x03`, `0x14`   |
-| Medium  | `0x0D`, `0x08`, `0x22`, `0x21` with payload `0x0B`, `0x24`, `0x04`, `0x13` |
+| Medium  | `0x0D`, `0x08`, `0x04`, `0x13` |
 
-Jupiter does not poll `0x1A` or `0x1C`, because no Jupiter response structure for those commands is retained in the approved source.
+Jupiter does not poll `0x1A`, `0x1C`, `0x21`, `0x22`, or `0x24`, because their Jupiter semantics are absent or unresolved. Product profiles declare the commands that may be placed in their polling schedules. Runtime construction rejects an unsupported scheduled command; model identification (`0x04`) is the sole exception.
 
 # Parsing and state
 
