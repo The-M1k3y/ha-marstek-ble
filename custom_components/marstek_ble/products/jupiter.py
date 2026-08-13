@@ -241,6 +241,7 @@ JUPITER_PROFILE = ProductProfile(
     device=ProductDeviceSpec("Marstek", "Jupiter-C Plus", "JPLS"),
     data_type=JupiterData,
     packets=(JupiterPackets.RUNTIME_INFORMATION, JupiterPackets.DEVICE_INFORMATION, JupiterPackets.WIFI_SSID, JupiterPackets.UNRESOLVED_STATUS, JupiterPackets.EVENT_HISTORY, JupiterPackets.DETAILED_TELEMETRY, JupiterPackets.RAW_STATUS_21, JupiterPackets.RAW_STATUS_22, JupiterPackets.RAW_STATUS_24),
+    supported_commands=frozenset({0x03, 0x08, 0x0D, 0x13, 0x14}),
     discovery_prefixes=("MST_JPLS_",),
     derived_entities=(
         derived_sensor(description=SensorEntityDescription(key="battery_power", name="Battery Power", native_unit_of_measurement=UnitOfPower.WATT, device_class=SensorDeviceClass.POWER, state_class=SensorStateClass.MEASUREMENT), value_fn=_battery_power, stale_paths=(("battery", "voltage"), ("battery", "current"))),
