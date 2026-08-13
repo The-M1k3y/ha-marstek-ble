@@ -189,8 +189,15 @@ class ProductProfile:
     device: ProductDeviceSpec
     data_type: type[Any]
     packets: tuple[Any, ...]
+    supported_commands: frozenset[int] = field(default_factory=frozenset)
     discovery_prefixes: tuple[str, ...] = ()
     derived_entities: tuple[DerivedEntitySpec, ...] = ()
+
+    def __post_init__(self) -> None:
+        commands = frozenset(self.supported_commands)
+        if any(not 0 <= command <= 0xFF for command in commands):
+            raise ValueError("Supported commands must fit in one byte")
+        object.__setattr__(self, "supported_commands", commands)
 
     def create_data(self) -> Any:
         """Create an empty cumulative data object."""
