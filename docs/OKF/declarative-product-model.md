@@ -4,8 +4,8 @@ title: Declarative product, parsing, and entity model
 description: Product-specific packet schemas, cumulative dataclasses, runtime parsing, live Home Assistant entity metadata, repeated records, and expansion topology.
 tags: [architecture, dataclass, parsing, entities, products, expansions]
 status: draft
-source_revision: "112abd322722b2e84bcdf34ee4b0325bf14b7313"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-09T10:50:00Z }
+source_revision: "aaab90ae2bde49671ee9081fb0df499ff1134134"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-13T12:00:00Z }
 sources:
   - id: schema
     resource: https://github.com/The-M1k3y/ha-marstek-ble/blob/112abd322722b2e84bcdf34ee4b0325bf14b7313/custom_components/marstek_ble/schema.py
@@ -29,7 +29,7 @@ Venus write/control platforms remain legacy implementations. They are not loaded
 
 # Single source of truth
 
-Each product model combines packet schemas, nested cumulative state, and Home Assistant entity descriptions. A `FieldSource` normalizes one packet representation into the canonical field unit. Direct entity metadata is attached to the corresponding dataclass field; derived entities stay in profile metadata.
+Each product model combines packet schemas, nested cumulative state, Home Assistant entity descriptions, and an explicit supported-command set. A `FieldSource` normalizes one packet representation into the canonical field unit. Direct entity metadata is attached to the corresponding dataclass field; derived entities stay in profile metadata. Product runtime construction rejects polling commands outside that set, except for the product-identification command `0x04`.
 
 # Runtime parsing
 
