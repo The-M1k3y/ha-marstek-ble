@@ -352,3 +352,44 @@ def test_product_coordinator_notification_failure_does_not_notify_listeners() ->
     )
     assert coordinator.recorded_result is False
     assert coordinator.listener_called is False
+
+
+def test_product_runtime_rejects_poll_commands_not_supported_by_profile() -> None:
+    unsupported_profile = type(VENUS_PROFILE)(
+        product_id="restricted",
+        device=VENUS_PROFILE.device,
+        data_type=VENUS_PROFILE.data_type,
+        packets=VENUS_PROFILE.packets,
+        supported_commands=frozenset({0x03}),
+    )
+
+    with pytest.raises(ValueError, match="unsupported poll command 0x14"):
+        ProductRuntime(
+            profile=unsupported_profile,
+            fast_poll=(PollCommand(0x03), PollCommand(0x14)),
+        )
+
+
+def test_product_runtime_allows_identification_outside_supported_commands() -> None:
+    identification_only_profile = type(VENUS_PROFILE)(
+        product_id="identification_only",
+        device=VENUS_PROFILE.device,
+        data_type=VENUS_PROFILE.data_type,
+        packets=VENUS_PROFILE.packets,
+        supported_commands=frozenset(),
+    )
+
+    runtime = ProductRuntime(
+        profile=identification_only_profile,
+        fast_poll=(PollCommand(0x04),),
+    )
+    assert runtime.fast_poll == (PollCommand(0x04),)
+
+
+def test_jupiter_polls_only_explicitly_supported_commands_plus_identification() -> None:
+    scheduled = {
+        command.command
+        for command in (*JUPITER_RUNTIME.fast_poll, *JUPITER_RUNTIME.medium_poll)
+    }
+    assert scheduled - {0x04} == JUPITER_RUNTIME.profile.supported_commands
+    assert scheduled.isdisjoint({0x1A, 0x1C, 0x21, 0x22, 0x24})
