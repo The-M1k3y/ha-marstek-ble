@@ -1,5 +1,9 @@
 # Marstek BLE OKF update log
 
+## 2026-08-13
+
+- **Supported polling commands**: Added explicit per-product supported-command sets and runtime validation. The product-identification request `0x04` remains available outside those sets. Jupiter no longer polls unresolved commands `0x21`, `0x22`, or `0x24`; its existing exclusions for `0x1A` and `0x1C` remain.
+
 ## 2026-08-10
 
 - **MPPT state flags**: Refined Jupiter `0x14` offset `0x20` from a mostly opaque raw word into a partially understood bitfield. Bit 2 (`0x0004`) is strongly supported as MPPT controller initialized/ready; bits 4–7 (`0x0010`–`0x0080`) remain confirmed as PV inputs 1–4 active. Bit 0 (`0x0001`) is tentatively associated with an opposing MPPT stopped/parked/disabled state after appearing alone during the full-battery PV shutdown sequence. Captures also showed `0x0014` during restart with only PV1 active and `0x0004` with the controller ready but no active PV input. Bit 0 and bit 2 were not observed set simultaneously. Bits 1, 3, and 8–15 remain unresolved, while the integration continues to preserve the complete raw 16-bit word.
