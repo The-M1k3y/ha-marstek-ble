@@ -16,6 +16,7 @@ from .schema import DataPath, PacketSchema, iter_parsed_fields
 _LOGGER = logging.getLogger(__name__)
 
 PayloadParser = Callable[[bytes, Any], tuple[DataPath, ...] | None]
+IDENTIFICATION_COMMAND = 0x04
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +137,16 @@ class ProductRuntime:
         for command in parsers:
             if not 0 <= command <= 0xFF:
                 raise ValueError("Payload parser command must fit in one byte")
+
+        for poll_command in (*self.fast_poll, *self.medium_poll):
+            if (
+                poll_command.command != IDENTIFICATION_COMMAND
+                and poll_command.command not in self.profile.supported_commands
+            ):
+                raise ValueError(
+                    f"{self.profile.product_id} schedules unsupported poll command "
+                    f"0x{poll_command.command:02X}"
+                )
 
         object.__setattr__(self, "_packets_by_command", MappingProxyType(packets))
         object.__setattr__(self, "payload_parsers", MappingProxyType(parsers))
