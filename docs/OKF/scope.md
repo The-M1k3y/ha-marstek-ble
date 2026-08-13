@@ -4,8 +4,8 @@ title: Marstek BLE knowledge scope
 description: Defines the product, source, privacy, runtime-status, and trust boundaries for this knowledge bundle.
 tags: [scope, provenance, privacy, marstek, venus, jupiter]
 status: draft
-source_revision: "112abd322722b2e84bcdf34ee4b0325bf14b7313"
-generated: { by: openai/gpt-5.6-sol, at: 2026-08-09T10:45:00Z }
+source_revision: "aaab90ae2bde49671ee9081fb0df499ff1134134"
+generated: { by: openai/gpt-5.6-sol, at: 2026-08-13T12:00:00Z }
 sources:
   - id: repository
     resource: https://github.com/The-M1k3y/ha-marstek-ble/tree/112abd322722b2e84bcdf34ee4b0325bf14b7313
@@ -40,7 +40,7 @@ Included subjects are:
 
 Venus and Jupiter-C Plus are runtime-enabled products. Discovery and persisted product selection resolve to separate product runtimes, and each runtime owns its own parsing and poll schedule.[^runtime][^products]
 
-Jupiter support is currently **read-only**. It polls `0x03` and `0x14` on the fast cadence and the observed `0x0D`, `0x08`, `0x22`, `0x21`, `0x24`, `0x04`, and `0x13` responses on the medium cadence. Commands `0x1A` and `0x1C` are not polled because the sanitized source records no observed Jupiter response structure for them.
+Jupiter support is currently **read-only**. It polls `0x03` and `0x14` on the fast cadence and `0x0D`, `0x08`, `0x04`, and `0x13` on the medium cadence. Commands `0x1A`, `0x1C`, `0x21`, `0x22`, and `0x24` are not polled because their Jupiter semantics are absent or unresolved. Each product profile explicitly declares its supported commands; the model-identification command `0x04` is the only polling exception because it must remain available independently of the selected product command set.
 
 Sensor and binary-sensor platforms now consume `ProductProfile` entity plans. Jupiter therefore exposes its modeled aggregate telemetry, four PV inputs, derived values, and populated battery-pack records. Battery-pack child devices use stable positional identifiers. New pack slots are added when a later `pack_count` increase is observed; a later decrease keeps the already-created entity identity but marks it unavailable through the repeated-record presence binding.[^entity-runtime]
 
