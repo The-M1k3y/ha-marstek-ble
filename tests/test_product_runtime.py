@@ -393,3 +393,14 @@ def test_jupiter_polls_only_explicitly_supported_commands_plus_identification() 
     }
     assert scheduled - {0x04} == JUPITER_RUNTIME.profile.supported_commands
     assert scheduled.isdisjoint({0x1A, 0x1C, 0x21, 0x22, 0x24})
+
+
+def test_product_profile_rejects_out_of_range_supported_commands() -> None:
+    with pytest.raises(ValueError, match="Supported commands must fit in one byte"):
+        type(VENUS_PROFILE)(
+            product_id="invalid_commands",
+            device=VENUS_PROFILE.device,
+            data_type=VENUS_PROFILE.data_type,
+            packets=VENUS_PROFILE.packets,
+            supported_commands=frozenset({0x100}),
+        )
